@@ -36,7 +36,7 @@ COLUMN_WIDTHS = {
 
 
 def load_seen(path: str | Path) -> set[str]:
-    """Links saved by earlier runs. A missing file means \"nothing yet\"."""
+    """Links saved by earlier runs. A missing file means "nothing yet"."""
     file_path = Path(path)
     if not file_path.exists():
         return set()
