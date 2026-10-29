@@ -7,35 +7,71 @@ drops duplicate links, and decides which rows are new.
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
-from typing import Any
+from datetime import datetime
+from typing import Iterable
+from urllib.parse import urlparse, urlunparse
 
-from listings import Listing
 
-
-def clean_text(value: str | None) -> str:
-    if not value:
+def clean_text(value: object) -> str:
+    """Collapse whitespace and drop the odd control character."""
+    if value is None:
         return ""
-    return re.sub(r"\s+", " ", value).strip()
+    text = str(value).replace("\xa0", " ")
+    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
-def is_new(listing: Listing, seen: set[str]) -> bool:
-    return listing.id not in seen
+def normalize_url(url: str) -> str:
+    """Drop tracking parameters and a trailing slash, so the same ad is one link."""
+    if not url:
+        return ""
+    parsed = urlparse(url.strip())
+    # Keep the path, drop query and fragment.
+    cleaned = urlunparse((parsed.scheme, parsed.netloc, parsed.path.rstrip("/"), "", "", ""))
+    return cleaned.lower()
 
 
-def mark_seen(listings: list[Listing], seen: set[str]) -> None:
-    for listing in listings:
-        seen.add(listing.id)
+def identity_keys(row: dict) -> tuple[str, str]:
+    """Two rows are the same job when the company and the title match, ignoring case."""
+    company = clean_text(row.get("Company")).casefold()
+    title = clean_text(row.get("Title")).casefold()
+    return company, title
 
 
-def to_row(listing: Listing, is_new_flag: bool) -> dict[str, Any]:
-    return {
-        "title": listing.title,
-        "company": listing.company,
-        "location": listing.location,
-        "url": listing.url,
-        "source": listing.source,
-        "source_type": listing.source_type,
-        "posted_at": listing.posted_at.isoformat() if listing.posted_at else "",
-        "is_new": is_new_flag,
-    }
+def dedupe(rows: Iterable[dict]) -> list[dict]:
+    """Keep the first copy of each company + title pair."""
+    seen: set[tuple[str, str]] = set()
+    unique: list[dict] = []
+    for row in rows:
+        key = identity_keys(row)
+        if key in seen or key == ("", ""):
+            continue
+        seen.add(key)
+        unique.append(row)
+    return unique
+
+
+def title_is_relevant(title: str, keywords: list[str]) -> bool:
+    """True when the title contains one of the role keywords."""
+    lowered = clean_text(title).casefold()
+    return any(keyword.casefold() in lowered for keyword in keywords)
+
+
+def apply_new_flags(rows: list[dict], seen_keys: set[tuple[str, str]]) -> list[dict]:
+    """Mark each row New or Seen based on the memory file."""
+    for row in rows:
+        key = identity_keys(row)
+        row["Status"] = "Seen" if key in seen_keys else "New"
+    return rows
+
+
+def sort_rows(rows: list[dict]) -> list[dict]:
+    """New rows first, then by company, then by title."""
+    return sorted(
+        rows,
+        key=lambda row: (
+            row.get("Status") != "New",
+            clean_text(row.get("Company")).casefold(),
+            clean_text(row.get("Title")).casefold(),
+        ),
+    )
