@@ -1,37 +1,39 @@
-"""Main entry point for the job listings scraper.
+"""Collect job postings and save them to a spreadsheet.
 
-Usage:
-    python scrape.py          # normal run, writes CSV/XLSX locally
-    python scrape.py --daily  # also commits and pushes seen state
+Run it from the project folder, after the libraries are installed:
+
+    python scrape.py
+
+To search for different roles or a different city, edit config.yaml.
+
+A daily run that remembers what it has already seen:
+
+    python scrape.py --daily
+
 """
 
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
 from config import load_config
-from daily import git_commit_and_push
-from save_results import save_csv, save_xlsx
-from sources import run_all_sources
+from daily import run_daily
+from save_results import write_results
+from sources import collect
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Scrape job listings")
-    parser.add_argument("--daily", action="store_true", help="Commit and push seen state")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--daily", action="store_true")
     args = parser.parse_args()
 
-    config = load_config()
-    results = run_all_sources(config)
-    save_csv(results, "output/jobs.csv")
-    save_xlsx(results, "output/jobs.xlsx")
+    config = load_config("config.yaml")
+    listings = collect(config)
+    write_results(listings, Path("output"))
 
     if args.daily:
-        git_commit_and_push(
-            ["data/seen_jobs.json", "output/new_jobs.csv", "output/last_run.json"],
-            "Daily job scrape",
-        )
+        run_daily()
 
 if __name__ == "__main__":
     main()
