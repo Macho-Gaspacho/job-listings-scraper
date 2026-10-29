@@ -1,6 +1,103 @@
 # Job listings scraper
 
-A configurable Python program that collects public job postings for any profession and any location. Roles, cities, companies, and sources are set in `config.yaml`. Edit that file and run the scraper. The Python files stay as they are.
+## For beginners: 5 minutes, no coding
+
+This program searches public job sites and saves what it finds in a spreadsheet. You choose the job titles and the city by answering a few questions. You do not write any code.
+
+### Step 1. Install Python 3.12
+
+Download it from [python.org/downloads](https://www.python.org/downloads/).
+
+**Mac.** Open the installer and follow the steps. Then open Finder, go to Applications, open the **Python 3.12** folder, and double-click **Install Certificates.command**. That lets the program open job websites. You only do this once. If you skip it, a search can stop with `CERTIFICATE_VERIFY_FAILED`.
+
+**Windows.** Run the installer. On the first screen, turn on **Add python.exe to PATH**, then click Install.
+
+### Step 2. Download this project
+
+Open [github.com/Macho-Gaspacho/job-listings-scraper](https://github.com/Macho-Gaspacho/job-listings-scraper). Click the green **Code** button, then **Download ZIP**. Unzip the file. You get a folder named `job-listings-scraper`.
+
+If you already use Git, this is the same thing:
+
+```bash
+git clone https://github.com/Macho-Gaspacho/job-listings-scraper.git
+```
+
+### Step 3. Start the program
+
+**Mac:** double-click `start.command`. Terminal opens.
+
+**Windows:** double-click `start.bat`.
+
+Or open a terminal in the project folder and run:
+
+```bash
+./start.sh
+```
+
+The first time, it creates a private folder named `.venv` and installs the tools the program needs. That can take a few minutes. Leave the window open. When it is finished, press Enter to close the window.
+
+### Step 4. Answer the questions
+
+It asks, one at a time:
+
+- which job titles you want (for example `Project Manager, Product Manager`)
+- which city and country (for example `Berlin, Germany`)
+- whether to include remote jobs, and in which country
+- extra words that must appear in the title (you can leave this blank)
+- which websites to use
+- company career pages, which you can skip
+
+Press Enter to accept a choice shown in brackets. Indeed and LinkedIn are enough for most searches.
+
+The folder already contains an example `config.yaml` (product and project jobs in Milan). If you save a new search, that file is copied to `config.backup.yaml` first.
+
+### Step 5. Open the spreadsheet
+
+When the search finishes, open `output/jobs.xlsx`. The same rows are in `output/jobs.csv`. The first run can take several minutes.
+
+### FAQ
+
+**Python was not found, or `python` is not recognized**
+
+Install Python 3.12 from the link in step 1. On Windows, run the installer again and turn on **Add python.exe to PATH**. Close the window and double-click the start file again.
+
+**`CERTIFICATE_VERIFY_FAILED`**
+
+On a Mac, double-click this file, then start the search again:
+
+```text
+"/Applications/Python 3.12/Install Certificates.command"
+```
+
+If your Python is 3.11 or 3.10, open that version's folder under Applications instead. The program prints the same path when this error happens.
+
+**The spreadsheet has 0 jobs**
+
+Try a broader job title, or turn remote jobs on. Indeed and LinkedIn only return a limited set of recent posts, so some searches come back empty. Company career pages and the remote boards still prefer Milan offices or remote roles open in Europe. For another city, use Indeed and LinkedIn.
+
+**LinkedIn or Indeed blocked the search**
+
+Those sites sometimes refuse a lot of requests. The program skips that one search and keeps the others. Wait a while, then run it again. Leave the pause between requests in place.
+
+**How do I change the search later?**
+
+Double-clicking the start file runs the search you already saved. To change the titles or the city, open a terminal in the project folder and run:
+
+```bash
+.venv/bin/python scrape.py --setup
+```
+
+On Windows:
+
+```bat
+.venv\Scripts\python scrape.py --setup
+```
+
+You can also delete `config.yaml` and double-click the start file again. Saving from the questions copies the previous file to `config.backup.yaml`.
+
+## For developers
+
+A configurable Python program that collects public job postings for any profession and any location. Roles, cities, companies, and sources are set in `config.yaml`. Edit that file, or run `python scrape.py --setup`. The search code stays as it is.
 
 The `config.yaml` in this repository is a working example from the author: product and project roles in Milan, plus remote roles a person in Italy or the EU can take. `config.example.yaml` is the same kind of file for a software engineer in Berlin and remote Germany.
 
@@ -147,7 +244,7 @@ pip install -r requirements.txt
 
 On Windows, create the environment with `py -m venv .venv` and activate it with `.venv\Scripts\activate`.
 
-After you clone the repository, edit `config.yaml` for your roles and location, then run `python scrape.py`.
+After you clone the repository, run `python scrape.py --setup` or edit `config.yaml` for your roles and location, then run `python scrape.py`. If `config.yaml` is missing, `python scrape.py` asks the setup questions instead of stopping.
 
 ## Usage
 
@@ -156,6 +253,14 @@ A normal run writes the full spreadsheet and, on that computer only, the daily f
 ```bash
 python scrape.py
 ```
+
+Answer the questions again and rewrite `config.yaml` with:
+
+```bash
+python scrape.py --setup
+```
+
+An existing `config.yaml` is copied to `config.backup.yaml` before it is replaced. `--setup` then offers to run the search.
 
 `--daily` does the same search, then commits three files so a later run can tell what is new:
 
@@ -239,7 +344,12 @@ The same title at the same company is kept once. The company-site link wins when
 ## Project structure
 
 ```text
+start.command       Mac double-click. Opens Terminal and runs start.sh.
+start.sh            Creates .venv, installs requirements, runs the scraper.
+start.bat           The same flow on Windows.
 scrape.py           Command line. Runs the search and writes the files.
+setup_wizard.py     Questions that write config.yaml. Also: scrape.py --setup.
+environment.py      Plain messages for old Python, missing packages, and Mac SSL.
 config.yaml         Working example: roles, places, sources, and companies.
 config.example.yaml Neutral example: software engineer, Berlin and remote.
 config.py           Reads config.yaml and checks the settings.

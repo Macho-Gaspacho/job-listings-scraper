@@ -20,6 +20,7 @@ from email.utils import parsedate_to_datetime
 from html import unescape
 
 from config import Company, Settings
+from environment import certificate_hint
 from listings import (
     blocks_europe,
     classify_place,
@@ -504,6 +505,9 @@ def collect_board_listings(settings: Settings, pause=time.sleep, getter=http_get
             except Exception as exc:
                 failures += 1
                 print(f"  Skipped ({exc}).", flush=True)
+                hint = certificate_hint.note(exc)
+                if hint:
+                    print(hint, flush=True)
                 found = []
             else:
                 print(f"  Kept {len(found)} matching listings.", flush=True)
@@ -520,6 +524,9 @@ def collect_board_listings(settings: Settings, pause=time.sleep, getter=http_get
             except Exception as exc:
                 failures += 1
                 print(f"  Skipped ({exc}).", flush=True)
+                hint = certificate_hint.note(exc)
+                if hint:
+                    print(hint, flush=True)
                 found = []
             else:
                 print(f"  Kept {len(found)} matching listings.", flush=True)
