@@ -1,0 +1,76 @@
+# ============================================================
+# Neutral example: Software Engineer in Berlin + remote Germany.
+# Copy the pieces you need into config.yaml, or run:
+#     python scrape.py --config config.example.yaml
+# The checked-in config.yaml is a separate working example
+# (Milan + product/project roles). You do not need to edit
+# any Python files.
+# ============================================================
+
+roles:
+  - Software Engineer
+
+require_title_match: true
+
+title_keywords:
+  Software Engineer:
+    - software engineer
+    - software developer
+    - backend engineer
+    - frontend engineer
+
+locations:
+  - name: Berlin, Germany
+    indeed_location: Berlin, Germany
+    linkedin_location: Berlin, Germany
+    remote: false
+    distance_miles: 25
+  - name: Remote
+    indeed_location: Germany
+    linkedin_location: Germany
+    remote: true
+
+# Indeed and LinkedIn are enough for most searches.
+# company_pages and the remote boards are off here. Company pages and
+# remote boards still keep Milan offices, or remote roles open to Italy,
+# the EU, or worldwide, so they are a poor fit for a Berlin office search.
+sources:
+  - id: company_pages
+    enabled: false
+    kind: company site
+  - id: we_work_remotely
+    enabled: false
+    kind: remote board
+  - id: remote_ok
+    enabled: false
+    kind: remote board
+  - id: remotive
+    enabled: false
+    kind: remote board
+  - id: working_nomads
+    enabled: false
+    kind: remote board
+  - id: indeed
+    enabled: true
+    kind: aggregator
+  - id: linkedin
+    enabled: true
+    kind: aggregator
+
+# Optional. Leave this empty, or add employers whose public careers
+# page you want to read. See README.md for the address-to-token table.
+companies: []
+
+country: germany
+
+results_per_search: 10
+posted_within_days: 30
+pause_seconds: 2
+fetch_descriptions: true
+snippet_characters: 280
+
+output:
+  directory: output
+  csv: jobs.csv
+  excel: jobs.xlsx
+  seen_file: data/seen_jobs.json

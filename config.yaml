@@ -1,12 +1,33 @@
+# ============================================================
+# This file is a working example (Milan + product/project roles).
+# To use the scraper for any other profession or location:
+#   1. Replace the roles list
+#   2. Update title_keywords (or set require_title_match: false)
+#   3. Change locations and country
+#   4. Optionally clear or replace the companies list
+# You do not need to edit any Python files.
+# ============================================================
+
 # Job search settings
 # -------------------
 # Change the lists below, save this file, and run:
 #     python scrape.py
 # You do not need to edit any Python file for a normal search.
+# See README.md for full examples (Berlin, Paris, teaching, healthcare).
+# config.example.yaml is the same kind of file for a software engineer
+# in Berlin and remote Germany.
 
 # Phrases to search for. Add a line, or delete one, to change the search.
 # A line starting with # is a note and is ignored.
 # Italian titles are commented out below. Remove the # to include them.
+# The roles below are the author's example. Replace them for another job.
+# Examples for other professions:
+#   - Software Engineer
+#   - Teacher
+#   - English Teacher
+#   - Nurse
+#   - Doctor
+#   - Data Analyst
 roles:
   - Project Manager
   - Product Manager
@@ -16,6 +37,12 @@ roles:
   # - Responsabile di progetto
   # - Product Marketing Manager
   # - Analista di ricerca di mercato
+  # - Software Engineer
+  # - Teacher
+  # - English Teacher
+  # - Nurse
+  # - Doctor
+  # - Data Analyst
 
 # Job sites also return loosely related titles. When this is true, a posting
 # is kept only if its title contains one of the phrases under that role.
@@ -54,6 +81,8 @@ title_keywords:
 # Job sites measure this in miles, which is why the setting says miles.
 # Company career pages and remote boards are filtered separately: Milan
 # offices, or remote roles you can do from Italy or the EU.
+# Indeed and LinkedIn follow the blocks below. The Milan search is the
+# author's example. Replace it, and set country further down to match.
 locations:
   - name: Milan, Italy
     indeed_location: Milan, Lombardy, Italy
@@ -64,6 +93,33 @@ locations:
     indeed_location: Italy
     linkedin_location: Italy
     remote: true
+  # Other places. Remove the Milan blocks above, uncomment one group,
+  # and set country to match (germany, france, or italy).
+  # Berlin + remote Germany:
+  # - name: Berlin, Germany
+  #   indeed_location: Berlin, Germany
+  #   linkedin_location: Berlin, Germany
+  #   remote: false
+  #   distance_miles: 25
+  # - name: Remote
+  #   indeed_location: Germany
+  #   linkedin_location: Germany
+  #   remote: true
+  # Paris + remote France:
+  # - name: Paris, France
+  #   indeed_location: Paris, France
+  #   linkedin_location: Paris, France
+  #   remote: false
+  #   distance_miles: 25
+  # - name: Remote
+  #   indeed_location: France
+  #   linkedin_location: France
+  #   remote: true
+  # Italy-wide, for example nursing or medicine:
+  # - name: Italy
+  #   indeed_location: Italy
+  #   linkedin_location: Italy
+  #   remote: false
 
 # Each source can be turned off by changing enabled to false.
 # kind is the "Source type" column in the spreadsheet. Leave kind as it is.
@@ -72,8 +128,8 @@ locations:
 # crowded place to apply, because you are not competing in an aggregator inbox.
 # we_work_remotely and remote_ok are remote job boards. They are quieter
 # than Indeed and LinkedIn, and the link usually goes to the company.
-# indeed and linkedin are the crowded aggregators. They are still useful
-# for Milan roles that never appear on a startup board.
+# indeed and linkedin follow the roles and locations you set. For most
+# searches those two sources are enough on their own.
 #
 # remotive and working_nomads are wired up but switched off. When they were
 # tested, Remotive returned only a handful of unrelated jobs, and Working
@@ -108,6 +164,10 @@ sources:
     kind: aggregator
 
 # Companies whose public careers page is read directly.
+# This list is an example of employers the author was tracking. It is
+# optional. For most searches, Indeed and LinkedIn are enough: clear this
+# list, replace it with your own companies, or set company_pages to
+# enabled: false under sources. An empty list is valid.
 # system is the job-posting tool the company uses. token is the public id
 # in that tool's address (not a password).
 #
@@ -125,11 +185,10 @@ sources:
 # To stop reading a company, set enabled: false. Do not delete the block
 # if you might want it again.
 #
-# The starter list was checked against the public job pages. Each company
-# below uses the system named here, and hires in Milan or for remote roles
-# a person in Italy or the EU can take. PayFit and Pennylane are examples
-# of companies you can switch on later; they are off so the first run stays
-# focused on Milan and on AI/product teams.
+# The blocks below are that example. Each company uses the system named
+# here, and hires in Milan or for remote roles a person in Italy or the EU
+# can take. PayFit and Pennylane are switched off. Delete or replace the
+# whole list when you search for a different profession or city.
 companies:
   - name: Bending Spoons
     system: bendingspoons

@@ -1,6 +1,8 @@
 # Job listings scraper
 
-A small Python program that collects job postings for project management, product, PMO, product marketing, and market research roles. The default search is Milan, plus remote roles a person in Italy or the EU can take.
+A configurable Python program that collects public job postings for any profession and any location. Roles, cities, companies, and sources are set in `config.yaml`. Edit that file and run the scraper. The Python files stay as they are.
+
+The `config.yaml` in this repository is a working example from the author: product and project roles in Milan, plus remote roles a person in Italy or the EU can take. `config.example.yaml` is the same kind of file for a software engineer in Berlin and remote Germany.
 
 It reads public career pages and job boards. It does not log in, and it does not try to get past a block. Results land in a CSV file and an Excel file. The same title at the same company is kept once, and each row is marked new or already seen.
 
@@ -8,7 +10,113 @@ It reads public career pages and job boards. It does not log in, and it does not
 python scrape.py
 ```
 
-A sample spreadsheet from 22 October 2026 is in `sample/`. That run saved 121 listings: 14 from company career pages, 15 from remote boards, and 92 from Indeed and LinkedIn.
+A sample spreadsheet from 22 October 2026 is in `sample/`. That run of the example search saved 121 listings: 14 from company career pages, 15 from remote boards, and 92 from Indeed and LinkedIn.
+
+## Quick start for any job
+
+To use this for your own search, replace `roles`, `title_keywords`, and `locations`, and change `country` to match. Clear or replace the `companies` list when you do not want the example employers. For most searches, Indeed and LinkedIn are enough: set the other sources to `enabled: false`.
+
+Copy one of the blocks below over the matching sections in `config.yaml`, or start from `config.example.yaml` and run `python scrape.py --config config.example.yaml`.
+
+Indeed and LinkedIn follow these settings. Company career pages and the remote boards still keep Milan offices, or remote roles open to Italy, the EU, or worldwide. For a city other than Milan, leave those sources off.
+
+### Software Engineer in Berlin + Remote
+
+```yaml
+roles:
+  - Software Engineer
+title_keywords:
+  Software Engineer:
+    - software engineer
+    - software developer
+    - backend engineer
+    - frontend engineer
+locations:
+  - name: Berlin, Germany
+    indeed_location: Berlin, Germany
+    linkedin_location: Berlin, Germany
+    remote: false
+    distance_miles: 25
+  - name: Remote
+    indeed_location: Germany
+    linkedin_location: Germany
+    remote: true
+country: germany
+```
+
+### Teacher or English Teacher in Milan or Remote
+
+```yaml
+roles:
+  - Teacher
+  - English Teacher
+title_keywords:
+  Teacher:
+    - teacher
+    - insegnante
+  English Teacher:
+    - english teacher
+    - esl
+    - efl
+    - insegnante di inglese
+locations:
+  - name: Milan, Italy
+    indeed_location: Milan, Lombardy, Italy
+    linkedin_location: Milan, Lombardy, Italy
+    remote: false
+    distance_miles: 30
+  - name: Remote
+    indeed_location: Italy
+    linkedin_location: Italy
+    remote: true
+country: italy
+```
+
+### Nurse or Doctor in Italy
+
+```yaml
+roles:
+  - Nurse
+  - Doctor
+title_keywords:
+  Nurse:
+    - nurse
+    - nursing
+    - infermiere
+  Doctor:
+    - doctor
+    - physician
+    - medico
+locations:
+  - name: Italy
+    indeed_location: Italy
+    linkedin_location: Italy
+    remote: false
+country: italy
+```
+
+### Data Analyst in Paris + Remote
+
+```yaml
+roles:
+  - Data Analyst
+title_keywords:
+  Data Analyst:
+    - data analyst
+    - data analytics
+    - business analyst
+locations:
+  - name: Paris, France
+    indeed_location: Paris, France
+    linkedin_location: Paris, France
+    remote: false
+    distance_miles: 25
+  - name: Remote
+    indeed_location: France
+    linkedin_location: France
+    remote: true
+country: france
+```
 
 ## Sources
 
@@ -16,16 +124,16 @@ Sources are switched on or off in `config.yaml`. The spreadsheet column **Source
 
 | Source | Type | Why it is included |
 | --- | --- | --- |
-| Company career pages | company site | You apply on the company's own site, not in a crowded board inbox. The starter list is Milan and EU tech and AI teams that publish a public job feed (Greenhouse, Lever, Ashby, Workable, or their own page). |
-| We Work Remotely | remote board | Public product and marketing feeds. US-only postings are dropped. |
+| Company career pages | company site | You apply on the company's own site, not in a crowded board inbox. The `companies` list is an example the author was tracking. Clear it, replace it, or turn this source off. |
+| We Work Remotely | remote board | Public feeds for product, sales and marketing, and management. US-only postings are dropped. Other professions mostly come from Indeed and LinkedIn. |
 | Remote OK | remote board | Public remote jobs, kept when they are open to Europe. Listings from [Remote OK](https://remoteok.com) are included when they pass that filter. |
-| Indeed and LinkedIn | aggregator | Still useful for Milan roles that never appear on a startup careers page. These are the crowded ones. |
+| Indeed and LinkedIn | aggregator | These follow `roles` and `locations`. For most searches they are enough on their own. |
 
-Remotive and Working Nomads are in the config and switched off. When they were tested, they did not return matching roles.
+Remotive and Working Nomads are in the config and switched off. When they were tested against the example roles, they did not return matching jobs.
 
 These were tried and left out, because they did not return a public job list: Wellfound, Welcome to the Jungle, Y Combinator Work at a Startup, Himalayas, InfoJobs Italia, startup.jobs, EU-Startups, SmartRecruiters, and Personio. Some of them answer with a bot check. This program does not try to get around that.
 
-The starter companies are Bending Spoons, Satispay, Scalapay, Doctolib, Qonto, ElevenLabs, Synthesia, Hugging Face, Alan, and Mistral AI. PayFit and Pennylane are in the file as examples that are switched off.
+The companies in the example `config.yaml` are Bending Spoons, Satispay, Scalapay, Doctolib, Qonto, ElevenLabs, Synthesia, Hugging Face, Alan, and Mistral AI. PayFit and Pennylane are in the file as examples that are switched off.
 
 ## Setup
 
@@ -38,6 +146,8 @@ pip install -r requirements.txt
 ```
 
 On Windows, create the environment with `py -m venv .venv` and activate it with `.venv\Scripts\activate`.
+
+After you clone the repository, edit `config.yaml` for your roles and location, then run `python scrape.py`.
 
 ## Usage
 
@@ -69,13 +179,13 @@ The tests do not contact job sites.
 
 ## Configuration
 
-Edit `config.yaml`. Lines starting with `#` are comments.
+Edit `config.yaml`. Lines starting with `#` are comments. The values already in the file are the author's Milan example. To use this for your own search, replace `roles`, `title_keywords`, and `locations`, and clear or replace `companies` when you want a different set of employers. `config.example.yaml` is a filled-in software-engineer search you can copy.
 
-- `roles` — search phrases. Add or remove a line.
-- `title_keywords` — a posting is kept when its title contains one of these phrases. Set `require_title_match` to `false` to keep every result.
-- `locations` — Milan and remote, for Indeed and LinkedIn. `distance_miles: 30` is about 50 km. Job sites measure the radius in miles.
-- `sources` — set `enabled` to `false` to switch a source off. Leave `kind` as it is.
-- `companies` — each block is a name, a hiring system, and a public id from the careers address (`token`). The token is not a password.
+- `roles` — search phrases. Add or remove a line. Any job title works: engineer, teacher, nurse, analyst, or something else.
+- `title_keywords` — a posting is kept when its title contains one of these phrases. The keys should match `roles`. Set `require_title_match` to `false` to keep every result. If a role has no phrases, all of its results are kept.
+- `locations` — places for Indeed and LinkedIn. Each block needs a `name`. `remote: true` asks Indeed for work-from-home jobs in that country and adds the word "remote" on LinkedIn. `distance_miles: 30` is about 50 km. Job sites measure the radius in miles. Change `country` when you change the country (`italy`, `france`, `germany`, `spain`, `netherlands`, `uk`, `usa`).
+- `sources` — set `enabled` to `false` to switch a source off. Leave `kind` as it is. Indeed and LinkedIn are enough for most searches.
+- `companies` — optional. The list in `config.yaml` is an example of employers the author was tracking, not a required part of the scraper. Clear it, replace it, or set `company_pages` to `enabled: false`. Each block is a name, a hiring system, and a public id from the careers address (`token`). The token is not a password.
 - `results_per_search` — how many Indeed and LinkedIn results to ask for. Company pages are not limited by this.
 - `posted_within_days` — skip older Indeed and LinkedIn jobs. Open company jobs are kept even when they are older.
 - `pause_seconds` — wait between requests. Leave a pause in place.
@@ -113,7 +223,7 @@ To add a company, match its careers address:
 | URL | Link to the posting. Clickable in Excel |
 | Description | A short snippet, not the full advert |
 | Role searched | Which role in `config.yaml` matched the title |
-| Place searched | `Milan, Italy` or `Remote` |
+| Place searched | The location `name` from `config.yaml` for Indeed and LinkedIn. Company pages and remote boards use `Milan, Italy` or `Remote` |
 
 Files:
 
@@ -130,7 +240,8 @@ The same title at the same company is kept once. The company-site link wins when
 
 ```text
 scrape.py           Command line. Runs the search and writes the files.
-config.yaml         Roles, places, sources, and companies.
+config.yaml         Working example: roles, places, sources, and companies.
+config.example.yaml Neutral example: software engineer, Berlin and remote.
 config.py           Reads config.yaml and checks the settings.
 sources.py          Indeed and LinkedIn, through python-jobspy.
 boards.py           Company career pages and remote-board feeds.
@@ -144,8 +255,9 @@ sample/             Example spreadsheet from one real run.
 ## Limitations
 
 - Some boards block automated requests. startup.jobs and EU-Startups answered with a bot check when this was built. Headless requests to Welcome to the Jungle were blocked as well. Those sources are not included. If Indeed or LinkedIn refuses a request, that search is skipped and the rest are still saved.
-- LinkedIn's public search cannot force "remote only", so a few office jobs in Italy can appear in the Remote rows. Read the Location column.
-- Company pages are kept when the office is Milan, or when the role is remote and open to Italy, the EU, or worldwide. A Paris or London office job is left out. A remote role listed in both Europe and the US is kept.
+- LinkedIn's public search cannot force "remote only", so a few office jobs in the country you set can appear in the Remote rows. Read the Location column.
+- Company pages and remote boards are kept when the office is Milan, or when the role is remote and open to Italy, the EU, or worldwide. A Paris, Berlin, or London office job from those sources is left out. Indeed and LinkedIn follow `locations`, so a search in another city still works there.
+- We Work Remotely is read from product, sales and marketing, and management feeds. A teacher, nurse, or engineer search will mostly come from Indeed and LinkedIn.
 - An unusual title is dropped until you add a phrase under `title_keywords`. "Product Manager" and "Senior Product Manager" stay as two rows.
 - Descriptions are shortened. Open the link for the full advert. Some company pages, notably Workable, send no description.
 - Dates are whatever the source sent. Company jobs older than 30 days are still listed while they are open.
