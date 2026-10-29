@@ -38,60 +38,126 @@ def collect_listings(settings: Settings, fetch, pause=time.sleep) -> tuple[list[
         (role, place, site)
         for role in settings.roles
         for place in settings.places
-        for site in settings.companies + settings.boards
-        if site.get("enabled", True)
+        for site in settings.sites
     ]
     rows: list[dict] = []
-    failed = 0
-    for role, place, site in searches:
+    failures = 0
+    for index, (role, place, site) in enumerate(searches):
+        print(f'Searching {site} for "{role}" in {place.name}...', flush=True)
         try:
             found = fetch(role, place, site)
-            rows.extend(found)
-        except Exception:
-            failed += 1
-        pause(settings.pause_seconds)
-    return rows, failed
+        except Exception as exc:
+            failures += 1
+            print(f"  Skipped ({exc}).", flush=True)
+            found = []
+        else:
+            phrases = (settings.title_keywords or {}).get(role, [])
+            # Job sites return loosely related titles. When the config lists
+            # phrases for this role, keep only titles that contain one of them.
+            if settings.require_title_match and phrases:
+                before = len(found)
+                found = [
+                    row
+                    for row in found
+                    if title_is_relevant(row.get("title", ""), phrases)
+                ]
+                print(
+                    f"  Found {before}, kept {len(found)} with a matching title.",
+                    flush=True,
+                )
+            else:
+                print(f"  Found {len(found)}.", flush=True)
+        rows.extend(found)
+        # Wait between searches, but not after the last one.
+        if settings.pause_seconds and index != len(searches) - 1:
+            pause(settings.pause_seconds)
+    return dedupe(rows), failures
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Collect job listings.")
-    parser.add_argument("--daily", action="store_true", help="Commit and push the daily files.")
-    parser.add_argument("--config", type=Path, default=Path("config.yaml"))
+    """Load the config, search, and write the spreadsheet. Returns a status code."""
+    project_dir = Path(__file__).resolve().parent
+    parser = argparse.ArgumentParser(
+        description="Collect job listings into a CSV file and an Excel file."
+    )
+    parser.add_argument(
+        "--config",
+        default=str(project_dir / "config.yaml"),
+        help="Path to the settings file. The default is config.yaml next to this script.",
+    )
+    parser.add_argument(
+        "--daily",
+        action="store_true",
+        help=(
+            "After the search, commit and push the seen-jobs memory, "
+            "the new-jobs sheet, and the run summary."
+        ),
+    )
     args = parser.parse_args(argv)
 
-    settings = load_config(args.config)
-    seen_path = Path("data/seen_jobs.json")
-    output_dir = Path("output")
-    seen = load_seen(seen_path)
+    try:
+        settings = load_config(args.config)
+    except (OSError, ValueError, yaml.YAMLError) as exc:
+        print(f"Could not read the config file: {exc}")
+        return 1
 
-    def fetch(role: str, place: str, site: dict) -> list[dict]:
-        if site.get("type") == "board":
-            return collect_board_listings(role, place, site)
-        return fetch_listings(role, place, site, requests_get)
-
-    rows, failed = collect_listings(settings, fetch)
-    rows = dedupe(rows)
-    rows = apply_new_flags(rows, seen)
-    rows = sort_rows(rows)
-    now = datetime.now(ZoneInfo("Europe/Rome")).isoformat(timespec="seconds")
+    seen = load_seen(settings.seen_file)
+    board_rows, board_failures = collect_board_listings(settings)
+    aggregator_rows: list[dict] = []
+    aggregator_failures = 0
+    if settings.sites:
+        aggregator_rows, aggregator_failures = collect_listings(
+            settings,
+            lambda role, place, site: fetch_listings(settings, role, place, site),
+        )
+    # Dedupe again across company pages, remote boards, and Indeed/LinkedIn.
+    rows = dedupe(board_rows + aggregator_rows)
+    rows = sort_rows(apply_new_flags(rows, seen))
+    write_outputs(rows, settings.csv_path, settings.excel_path)
+    remembered = set(seen)
     for row in rows:
-        row["Date found"] = now
+        remembered |= identity_keys(row)
+    save_seen(settings.seen_file, remembered)
 
-    write_outputs(rows, output_dir)
-    save_seen(seen_path, rows)
+    # Rome time, so a morning run lines up with the clock in Milan.
+    run_at = datetime.now(ZoneInfo("Europe/Rome"))
+    new_csv = settings.output_dir / "new_jobs.csv"
+    last_run = settings.output_dir / "last_run.json"
+    summary = write_daily_files(rows, new_csv, last_run, run_at)
+    print()
+    print(f"Saved {len(rows)} listings ({summary['new_listings']} new).")
+    print(f"Excel: {settings.excel_path}")
+    print(f"CSV:   {settings.csv_path}")
+    print(f"New since last run: {new_csv}")
+    print(f"Run summary: {last_run}")
+    if not rows:
+        print(
+            "No listings came back. Try a broader role, add a company in "
+            "config.yaml, or raise posted_within_days."
+        )
+    failures = board_failures + aggregator_failures
+    searches = len(settings.roles) * len(settings.places) * len(settings.sites)
+    company_count = sum(1 for company in settings.companies or [] if company.enabled)
+    attempts = searches + (company_count if settings.company_pages_enabled else 0)
+    attempts += len(settings.remote_boards or [])
+    if attempts and failures == attempts:
+        print("Every search failed. Check your internet connection and config.yaml.")
+        print("The daily files were written locally and were not committed.")
+        return 1
     if args.daily:
-        write_daily_files(rows, output_dir, seen_path)
-        commit_daily_files(Path("."), f"Daily run {now}")
-        push_daily_commit(Path("."))
-
-    print(f"Found {len(rows)} listings, {failed} sources failed.")
+        day = f"{run_at.day} {run_at.strftime('%B %Y')}"
+        message = (
+            f"Record the daily job search for {day}.\n\n"
+            f"{summary['new_listings']} new listings out of {summary['total_listings']}."
+        )
+        try:
+            commit_daily_files(project_dir, message)
+            push_daily_commit(project_dir)
+        except RuntimeError as exc:
+            print(exc)
+            return 1
     return 0
 
 
-def requests_get(url: str):
-    import requests
-    return requests.get(url, timeout=20, headers={"User-Agent": "job-listings-scraper/1.0"})
-
-
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())
