@@ -1,0 +1,70 @@
+roles:
+  - product manager
+  - project manager
+  - PMO
+  - product marketing
+  - market research
+
+places:
+  - Milan
+  - Remote
+
+pause_seconds: 1.5
+
+companies:
+  - name: Bending Spoons
+    url: https://careers.bendingspoons.com/
+    enabled: true
+  - name: Satispay
+    url: https://satispay.recruitee.com/
+    enabled: true
+  - name: Scalapay
+    url: https://scalapay.recruitee.com/
+    enabled: true
+  - name: Doctolib
+    url: https://about.doctolib.com/careers/
+    enabled: true
+  - name: Qonto
+    url: https://qonto.com/en/careers
+    enabled: true
+  - name: ElevenLabs
+    url: https://elevenlabs.io/careers
+    enabled: true
+  - name: Synthesia
+    url: https://www.synthesia.io/careers
+    enabled: true
+  - name: Hugging Face
+    url: https://apply.workable.com/huggingface/
+    enabled: true
+  - name: Alan
+    url: https://alan.com/en/careers
+    enabled: true
+  - name: Mistral AI
+    url: https://jobs.lever.co/mistral
+    enabled: true
+  - name: PayFit
+    url: https://www.payfit.com/careers/
+    enabled: false
+  - name: Pennylane
+    url: https://www.pennylane.com/careers
+    enabled: false
+
+boards:
+  - name: We Work Remotely
+    type: board
+    enabled: true
+  - name: Remote OK
+    type: board
+    enabled: true
+  - name: Indeed
+    type: board
+    enabled: true
+  - name: LinkedIn
+    type: board
+    enabled: true
+  - name: Remotive
+    type: board
+    enabled: false
+  - name: Working Nomads
+    type: board
+    enabled: false
