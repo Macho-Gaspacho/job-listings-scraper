@@ -1,5 +1,4 @@
-"""Daily run helpers: commit and push seen state.
-"""
+"""Commit and push the three files a daily run produces."""
 
 from __future__ import annotations
 
@@ -7,7 +6,17 @@ import subprocess
 from pathlib import Path
 
 
-def git_commit_and_push(files: list[str], message: str) -> None:
-    subprocess.run(["git", "add", *files], check=True)
-    subprocess.run(["git", "commit", "-m", message], check=True)
-    subprocess.run(["git", "push"], check=True)
+def commit_daily_files(repo_root: Path, message: str) -> None:
+    """Stage the three daily files and commit them."""
+    files = [
+        "data/seen_jobs.json",
+        "output/new_jobs.csv",
+        "output/last_run.json",
+    ]
+    subprocess.run(["git", "add", *files], cwd=repo_root, check=True)
+    subprocess.run(["git", "commit", "-m", message], cwd=repo_root, check=True)
+
+
+def push_daily_commit(repo_root: Path) -> None:
+    """Push the commit that holds the daily files."""
+    subprocess.run(["git", "push"], cwd=repo_root, check=True)
