@@ -1,4 +1,8 @@
-requests
-pyyaml
-openpyxl
-pytest
+requests==2.32.5
+beautifulsoup4==4.14.2
+PyYAML==6.0.3
+openpyxl==3.1.5
+
+# Only needed if you want to run the automated checks:
+#     python -m pytest
+pytest==9.1.1
