@@ -41,7 +41,7 @@ def test_write_outputs_creates_csv_and_excel_with_friendly_headers(tmp_path):
     workbook = load_workbook(excel_path)
     sheet = workbook["Jobs"]
     headers = [cell.value for cell in sheet[1]]
-    assert headers[:9] == [
+    assert headers == [
         "New since last run",
         "Title",
         "Company",
@@ -51,7 +51,16 @@ def test_write_outputs_creates_csv_and_excel_with_friendly_headers(tmp_path):
         "Source type",
         "URL",
         "Description",
+        "Role searched",
+        "Place searched",
+        "Salary",
+        "Job type",
+        "Remote",
+        "Level",
+        "Languages",
+        "Visa",
     ]
+    assert sheet.auto_filter.ref == "A1:Q2"
     assert sheet["A2"].value == "yes"
     assert sheet["G2"].value == "aggregator"
     assert sheet["H2"].value == "https://it.indeed.com/viewjob?jk=sample"
@@ -67,6 +76,37 @@ def test_write_outputs_creates_csv_and_excel_with_friendly_headers(tmp_path):
     )
     assert "Milan" not in about
     assert "location name from your config" in about
+    assert "guessed from the text" in about
+
+
+def test_new_columns_show_salary_and_pass_through_safe_cell(tmp_path):
+    csv_path = tmp_path / "jobs.csv"
+    excel_path = tmp_path / "jobs.xlsx"
+    write_outputs(
+        [
+            _row(
+                salary="40,000–50,000 EUR/year",
+                job_type="Full-time",
+                is_remote="Yes",
+                level="Entry",
+                languages="=German",
+                visa="No sponsorship (guessed from the text)",
+            )
+        ],
+        csv_path,
+        excel_path,
+    )
+    sheet = load_workbook(excel_path)["Jobs"]
+    headers = [cell.value for cell in sheet[1]]
+    values = {headers[index]: sheet.cell(2, index + 1).value for index in range(len(headers))}
+    assert values["Salary"] == "40,000–50,000 EUR/year"
+    assert values["Job type"] == "Full-time"
+    assert values["Remote"] == "Yes"
+    assert values["Level"] == "Entry"
+    assert values["Languages"] == "'=German"
+    assert values["Visa"] == "No sponsorship (guessed from the text)"
+    assert sheet.freeze_panes == "A2"
+    assert sheet.auto_filter.ref == "A1:Q2"
 
 
 def test_about_sheet_names_the_configured_places(tmp_path):

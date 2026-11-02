@@ -14,6 +14,7 @@ from pathlib import Path
 import yaml
 
 from config import KNOWN_SYSTEMS
+from enrichment import canonical_job_type
 from regions import INDEED_COUNTRIES, canonical_country, english_name, fold_text
 from synonyms import suggestions_for
 
@@ -274,6 +275,9 @@ def build_config(
     require_title_match: bool,
     results_per_search: int,
     posted_within_days: int,
+    job_types: list[str] | None = None,
+    hide_senior: bool = False,
+    visa_sponsorship: bool = False,
 ) -> dict:
     use_companies = "company_pages" in sources and bool(companies)
     data = {
@@ -314,6 +318,15 @@ def build_config(
     }
     if exclude:
         data["exclude_keywords"] = [word.lower() for word in exclude]
+    filters = {}
+    if job_types:
+        filters["job_types"] = list(job_types)
+    if hide_senior:
+        filters["levels"] = ["Entry", "Unknown"]
+    if visa_sponsorship:
+        filters["only_visa_sponsorship"] = True
+    if filters:
+        data["filters"] = filters
     return data
 
 
@@ -355,11 +368,20 @@ def summary_text(data: dict) -> str:
         filter_line = "  Title filter: off. Every result Indeed and LinkedIn return is kept."
     exclude = data.get("exclude_keywords") or []
     exclude_line = f"\n  Skip a title that contains: {', '.join(exclude)}" if exclude else ""
+    filters = data.get("filters") or {}
+    filter_bits = []
+    if filters.get("job_types"):
+        filter_bits.append("Job types: " + ", ".join(filters["job_types"]))
+    if filters.get("levels"):
+        filter_bits.append("Senior roles: hidden")
+    if filters.get("only_visa_sponsorship"):
+        filter_bits.append("Visa: keep jobs that offer sponsorship or do not say")
+    extra_line = "".join(f"\n  {bit}" for bit in filter_bits)
     return (
         "Here is the search that will be saved:\n"
         f"  Job titles: {roles}\n"
         f"  Places: {'; '.join(places)}\n"
-        f"{filter_line}{exclude_line}\n"
+        f"{filter_line}{exclude_line}{extra_line}\n"
         f"  Results per search: {data['results_per_search']}\n"
         f"  Posted within days: {data['posted_within_days']}\n"
         f"  Websites: {', '.join(enabled) or 'none'}\n"
@@ -529,6 +551,45 @@ def ask_keywords(io: IO) -> list[str]:
     return split_csv(io.ask("> "))
 
 
+def ask_job_types(io: IO) -> list[str]:
+    io.say("")
+    io.say("Only certain job types?")
+    io.say("You can limit results to Full-time, Part-time, Contract, Internship, or Temporary.")
+    if not io.yes_no("Only certain job types?", default=False):
+        return []
+    while True:
+        io.say("Which job types? Separate them with commas. Example: Full-time, Internship")
+        chosen = []
+        failed = False
+        for part in split_csv(io.ask("> ")):
+            name = canonical_job_type(part)
+            if not name:
+                io.say("Use Full-time, Part-time, Contract, Internship, or Temporary.")
+                failed = True
+                break
+            if name not in chosen:
+                chosen.append(name)
+        if not failed and chosen:
+            return chosen
+        if not failed:
+            return []
+
+
+def ask_hide_senior(io: IO) -> bool:
+    io.say("")
+    io.say("Hide senior roles?")
+    io.say("Titles such as senior, lead, principal, and head are left out. Other titles stay, including ones with no level.")
+    return io.yes_no("Hide senior roles?", default=False)
+
+
+def ask_visa(io: IO) -> bool:
+    io.say("")
+    io.say("Do you need visa sponsorship?")
+    io.say("Yes keeps jobs that offer sponsorship and jobs that do not say. It drops jobs that say they will not sponsor a visa.")
+    io.say("This is guessed from the text, so it can be wrong.")
+    return io.yes_no("Do you need visa sponsorship?", default=False)
+
+
 def ask_exclude(io: IO) -> list[str]:
     io.say("")
     io.say("Words that should reject a job title (optional).")
@@ -695,6 +756,9 @@ def _ask_and_save(path: Path, io: IO, run_search) -> int:
         keep_all = ask_keep_all(io, default_yes=not suggestions)
         extras = ask_keywords(io)
         exclude = ask_exclude(io)
+        job_types = ask_job_types(io)
+        hide_senior = ask_hide_senior(io)
+        visa_sponsorship = ask_visa(io)
         sources = ask_sources(io, indeed_ok)
         companies = ask_companies(io) if "company_pages" in sources else []
         if "company_pages" in sources and not companies:
@@ -716,6 +780,9 @@ def _ask_and_save(path: Path, io: IO, run_search) -> int:
             require_title_match=not keep_all,
             results_per_search=results_per_search,
             posted_within_days=posted_within_days,
+            job_types=job_types,
+            hide_senior=hide_senior,
+            visa_sponsorship=visa_sponsorship,
         )
         io.say("")
         io.say(summary_text(data))

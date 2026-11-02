@@ -296,6 +296,23 @@ Edit `config.yaml` (create it with `python scrape.py --setup`, or copy a file fr
 - `posted_within_days` — skip older Indeed and LinkedIn jobs. Open company jobs are kept even when they are older.
 - `pause_seconds` — wait between requests. Leave a pause in place.
 - `fetch_descriptions` — set to `false` for a faster run. LinkedIn snippets will be blank.
+- `filters` — optional. Leave the block out to keep every job that matches the title and place. A blank value is not a reason to drop a row, except where the list itself names `Unknown`.
+
+```yaml
+filters:
+  job_types: [Full-time, Internship]   # Full-time, Part-time, Contract, Internship, Temporary
+  levels: [Entry, Unknown]             # Entry, Senior, or Unknown
+  min_salary: 30000                    # yearly amount; monthly × 12, hourly × 2,080, weekly × 52, daily × 260
+  exclude_title_words: [senior, lead]  # whole words, so lead does not match leader
+  exclude_if_language_required: [German]  # English names: German, Dutch, Spanish, Polish, …
+  only_visa_sponsorship: false         # true keeps Sponsorship offered and Unknown
+```
+
+`min_salary` is compared only when the posting states a salary and a time period. The number is not converted between currencies: 30,000 means 30,000 in whatever currency the source used. A job with no salary, or with a salary and no period, is kept.
+
+`job_types` is also sent to Indeed when the list has exactly one type. LinkedIn ignores `job_type` in python-jobspy 1.4.0, so LinkedIn results are filtered after the search. Several types are always filtered after the search, because jobspy accepts one type at a time.
+
+Languages and visa are guessed from the description text. They can be wrong. `only_visa_sponsorship: true` drops rows labelled "No sponsorship" and keeps "Sponsorship offered" and "Unknown".
 
 To add a company, match its careers address:
 
@@ -330,6 +347,12 @@ To add a company, match its careers address:
 | Description | A short snippet, not the full advert |
 | Role searched | Which role in `config.yaml` matched the title |
 | Place searched | The location name from your config that matched this posting. Company pages and remote boards use that name, or `Remote` |
+| Salary | Pay range when the source gave one, such as `40,000–50,000 EUR/year`. Blank when it did not |
+| Job type | `Full-time`, `Part-time`, `Contract`, `Internship`, or `Temporary` when the source says |
+| Remote | `Yes`, `No`, or `Unknown` |
+| Level | `Entry`, `Senior`, or `Unknown`. From the source when it sends a level, otherwise from words in the title |
+| Languages | Languages the description appears to require. Guessed from the text |
+| Visa | `No sponsorship`, `Sponsorship offered`, or `Unknown`. Guessed from the text |
 
 Files:
 
@@ -358,6 +381,8 @@ regions.py          Country names and the location rules built from your config.
 sources.py          Indeed and LinkedIn, through python-jobspy.
 boards.py           Company career pages and remote-board feeds.
 listings.py         Snippets, title filter, dedupe, and the new/seen flag.
+enrichment.py       Salary, job type, level, language, and visa.
+signals/            Word lists used to guess level, language, and visa from the text.
 save_results.py     CSV, Excel, the seen file, and the daily summary.
 daily.py            Commits the daily files when you pass --daily.
 tests/              Checks that do not contact the job sites.
@@ -371,7 +396,8 @@ sample/             Example spreadsheet from one real run.
 - Company pages and remote boards are kept when the office matches a city you listed, or when the role is remote and open in your country or the regions in `location_filter`. An office in another city is left out. A remote role limited to a different country is left out.
 - We Work Remotely is read from the all-jobs feed unless you set `categories` on that source. The title filter still applies, so an unusual profession mostly comes from Indeed and LinkedIn.
 - An unusual title is dropped until you add a phrase under `title_keywords`. "Product Manager" and "Senior Product Manager" stay as two rows.
-- Descriptions are shortened. Open the link for the full advert. Some company pages, notably Workable, send no description.
+- Descriptions are shortened. Open the link for the full advert. Some company pages, notably Workable, send no description. Language and visa notes are guessed from that text before it is shortened.
+- A salary filter does not drop a job that leaves the pay blank. It also does not convert between currencies.
 - Dates are whatever the source sent. Company jobs older than 30 days are still listed while they are open.
 - Indeed and LinkedIn return a limited number of results per search (`results_per_search`), not every posting on the site.
 

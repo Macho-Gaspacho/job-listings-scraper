@@ -20,6 +20,7 @@ from email.utils import parsedate_to_datetime
 from html import unescape
 
 from config import Company, Settings
+from enrichment import describe_posting, job_type_text, passes_filters
 from environment import certificate_hint, network_problem, report_skip
 from regions import build_location_rules
 from listings import (
@@ -206,6 +207,9 @@ def filter_board_jobs(
             "role_searched": "; ".join(roles),
             "place_searched": place,
         }
+        row.update(describe_posting({**job, "title": row["title"], "description": description}))
+        if not passes_filters(row, getattr(settings, "filters", None)):
+            continue
         if place == "Remote" and not row["location"] and is_remote:
             row["remote_scope"] = "unspecified"
         kept.append(row)
@@ -223,7 +227,8 @@ def parse_greenhouse(payload: dict, company: str) -> list[dict]:
                 "company": company,
                 "location": location,
                 "is_remote": "remote" in location.lower(),
-                "date_posted": job.get("updated_at") or job.get("first_published") or "",
+                "job_type": _greenhouse_job_type(job),
+                "date_posted": job.get("first_published") or job.get("updated_at") or "",
                 "url": job.get("absolute_url") or "",
                 "description": job.get("content") or "",
                 "source": f"{company} careers",
@@ -232,17 +237,30 @@ def parse_greenhouse(payload: dict, company: str) -> list[dict]:
     return rows
 
 
+def _greenhouse_job_type(job: dict) -> str:
+    """Employment type from Greenhouse metadata, when the board sends it."""
+    for item in job.get("metadata") or []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").casefold()
+        if "employment" in name or name in {"job type", "commitment", "time type"}:
+            return job_type_text(item.get("value"))
+    return ""
+
+
 def parse_lever(payload: list, company: str) -> list[dict]:
     """Lever's public postings API."""
     rows = []
     for job in payload or []:
-        location = ((job.get("categories") or {}).get("location")) or ""
+        categories = job.get("categories") or {}
+        location = categories.get("location") or ""
         workplace = str(job.get("workplaceType") or "")
         rows.append(
             {
                 "title": job.get("text") or "",
                 "company": company,
                 "location": location,
+                "job_type": job_type_text(categories.get("commitment")),
                 "is_remote": "remote" in location.lower() or workplace.lower() == "remote",
                 "date_posted": job.get("createdAt") or "",
                 "url": job.get("hostedUrl") or "",
@@ -275,6 +293,7 @@ def parse_ashby(payload: dict, company: str) -> list[dict]:
                 "title": job.get("title") or "",
                 "company": company,
                 "location": location,
+                "job_type": job_type_text(job.get("employmentType")),
                 "is_remote": is_remote,
                 "date_posted": job.get("publishedAt") or "",
                 "url": job.get("jobUrl") or "",
@@ -297,6 +316,7 @@ def parse_workable(payload: dict, company: str) -> list[dict]:
                 "title": job.get("title") or "",
                 "company": company,
                 "location": location,
+                "job_type": job_type_text(job.get("employment_type")),
                 "is_remote": bool(job.get("telecommuting")),
                 "date_posted": job.get("published_on") or job.get("created_at") or "",
                 "url": job.get("url") or job.get("application_url") or "",
@@ -425,6 +445,8 @@ def parse_remote_ok(payload: list) -> list[dict]:
                 "title": job.get("position") or "",
                 "company": job.get("company") or "",
                 "location": job.get("location") or "",
+                "salary_min": job.get("salary_min"),
+                "salary_max": job.get("salary_max"),
                 "is_remote": True,
                 "date_posted": job.get("epoch") or job.get("date") or "",
                 "url": job.get("url") or job.get("apply_url") or "",
@@ -491,7 +513,7 @@ def parse_teamtailor(body: bytes, company: str) -> list[dict]:
             {
                 "title": title,
                 "company": company,
-                "location": location or title,
+                "location": location,
                 "is_remote": "remote" in blob.lower(),
                 "date_posted": _item_text(item, "pubDate"),
                 "url": _item_text(item, "link"),

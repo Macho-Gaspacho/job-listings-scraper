@@ -13,6 +13,7 @@ from jobspy import scrape_jobs
 from jobspy.util import log_handler
 
 from config import Place, Settings
+from enrichment import jobspy_job_type
 from listings import row_from_hit
 
 
@@ -58,6 +59,13 @@ def build_search(settings: Settings, role: str, place: Place, site: str, verbose
     }
     if place.remote and site == "indeed":
         query["is_remote"] = True
+    # Indeed accepts one job_type (fulltime, parttime, contract, temporary,
+    # internship) and is_remote. LinkedIn ignores job_type in jobspy 1.4.0,
+    # so it is sent only for Indeed. Several chosen types are filtered after
+    # the search, because jobspy takes a single job_type.
+    chosen = () if settings.filters is None else settings.filters.job_types
+    if site == "indeed" and len(chosen) == 1:
+        query["job_type"] = jobspy_job_type(chosen[0])
     if place.distance_miles is not None:
         query["distance"] = place.distance_miles
     return query

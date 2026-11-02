@@ -79,6 +79,18 @@ class Company:
 
 
 @dataclass
+class Filters:
+    """Optional limits. Empty means the row is kept."""
+
+    job_types: tuple[str, ...] = ()
+    levels: tuple[str, ...] = ()
+    min_salary: int | float | None = None
+    exclude_title_words: tuple[str, ...] = ()
+    exclude_if_language_required: tuple[str, ...] = ()
+    only_visa_sponsorship: bool = False
+
+
+@dataclass
 class Settings:
     """Everything scrape.py needs, already checked."""
 
@@ -104,6 +116,7 @@ class Settings:
     timezone: str = ""
     location_rules: LocationRules | None = None
     wwr_categories: tuple[str, ...] | None = None
+    filters: Filters | None = None
 
 
 def _text_list(values: object) -> list[str]:
@@ -271,6 +284,60 @@ def _load_timezone(raw: dict) -> str:
     return validate_timezone(str(provided))
 
 
+def _load_filters(raw: dict) -> Filters:
+    """Optional filters. A missing block keeps every row."""
+    if "filters" not in raw or raw.get("filters") is None:
+        return Filters()
+    block = raw.get("filters")
+    if not isinstance(block, dict):
+        raise ValueError("filters in config.yaml should be a group of settings.")
+    from enrichment import canonical_job_type, canonical_language, canonical_level
+
+    job_types = []
+    for item in _text_list(block.get("job_types")):
+        name = canonical_job_type(item)
+        if not name:
+            choices = ", ".join(("Full-time", "Part-time", "Contract", "Internship", "Temporary"))
+            raise ValueError(f"Unknown job type '{item}'. Choose from: {choices}.")
+        if name not in job_types:
+            job_types.append(name)
+    levels = []
+    for item in _text_list(block.get("levels")):
+        name = canonical_level(item)
+        if not name:
+            raise ValueError(f"Unknown level '{item}'. Choose from: Entry, Senior, Unknown.")
+        if name not in levels:
+            levels.append(name)
+    languages = []
+    for item in _text_list(block.get("exclude_if_language_required")):
+        name = canonical_language(item)
+        if not name:
+            raise ValueError(
+                f"Unknown language '{item}'. Use an English name such as German, Dutch, Spanish, or Polish."
+            )
+        if name not in languages:
+            languages.append(name)
+    if "min_salary" in block and block.get("min_salary") not in (None, ""):
+        amount = block.get("min_salary")
+        if isinstance(amount, bool) or not isinstance(amount, (int, float)) or amount < 0:
+            raise ValueError("min_salary must be a number, such as 30000.")
+        minimum = int(amount) if isinstance(amount, float) and amount.is_integer() else amount
+    else:
+        minimum = None
+    if "only_visa_sponsorship" in block and not isinstance(block.get("only_visa_sponsorship"), bool):
+        raise ValueError("only_visa_sponsorship must be true or false.")
+    if "exclude_title_words" in block and not isinstance(block.get("exclude_title_words"), list):
+        raise ValueError("exclude_title_words in config.yaml should be a list.")
+    return Filters(
+        job_types=tuple(job_types),
+        levels=tuple(levels),
+        min_salary=minimum,
+        exclude_title_words=tuple(_text_list(block.get("exclude_title_words"))),
+        exclude_if_language_required=tuple(languages),
+        only_visa_sponsorship=bool(block.get("only_visa_sponsorship", False)),
+    )
+
+
 def _wwr_categories(raw: dict) -> tuple[str, ...] | None:
     """Category names from the we_work_remotely source, or None to use the default feed."""
     sources = raw.get("sources")
@@ -381,4 +448,5 @@ def load_config(path: str | Path) -> Settings:
         timezone=_load_timezone(raw),
         location_rules=build_location_rules(places, country, location_filter),
         wwr_categories=_wwr_categories(raw),
+        filters=_load_filters(raw),
     )

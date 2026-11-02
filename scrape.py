@@ -34,6 +34,7 @@ try:
     from config import Settings, load_config
     from daily import commit_daily_files, push_daily_commit
     from environment import python_version_problem, report_skip
+    from enrichment import filters_active, passes_filters
     from listings import (
         apply_new_flags,
         dedupe,
@@ -124,9 +125,14 @@ def collect_listings(settings: Settings, fetch, pause=time.sleep) -> tuple[list[
                     if not title_is_excluded(row.get("title", ""), excludes)
                 ]
                 filtered = True
+            limited = filters_active(settings.filters)
+            if limited:
+                found = [row for row in found if passes_filters(row, settings.filters)]
+                filtered = True
             if filtered:
+                reason = "after filters" if limited else "with a matching title"
                 print(
-                    f"  Found {before}, kept {len(found)} with a matching title.",
+                    f"  Found {before}, kept {len(found)} {reason}.",
                     flush=True,
                 )
             else:

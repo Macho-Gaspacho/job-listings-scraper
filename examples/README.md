@@ -18,3 +18,5 @@ Then run `python scrape.py`.
 
 - `berlin-software-engineer.yaml` — software engineer jobs in Berlin, and remote jobs in Germany. Indeed and LinkedIn only.
 - `milan-product-manager.yaml` — product and project jobs in Milan, remote jobs in Italy, plus an example list of companies.
+
+Both files show an optional `filters` block in comments. Salary, job type, level, language, and visa filters are off until you remove the `#`. A salary minimum keeps jobs that do not state a salary. Language and visa values are guessed from the posting text.

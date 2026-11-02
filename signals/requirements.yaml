@@ -1,0 +1,140 @@
+# Words used to guess level, language, and visa from a posting.
+# Matching is whole words, in any order, and ignores capitals and accents.
+# These lists are a starter set for en, de, fr, es, it, nl, pl, and pt.
+# They are not a complete dictionary. Language and visa are guesses.
+
+level_entry:
+  - intern
+  - internship
+  - junior
+  - graduate
+  - entry
+  - stagista
+  - tirocinante
+  - praktikant
+  - praktikantin
+  - werkstudent
+  - werkstudentin
+  - stagiaire
+  - becario
+  - becaria
+  - practicante
+  - aprendiz
+  - estagiário
+  - estagiária
+  - stażysta
+  - stażystka
+  - stagiair
+
+level_senior:
+  - senior
+  - lead
+  - principal
+  - head
+
+languages:
+  English:
+    - fluent english
+    - native english
+    - english native
+    - english fluency
+  German:
+    - fluent german
+    - native german
+    - german native
+    - german required
+    - deutsch fließend
+    - fließend deutsch
+    - verhandlungssicher deutsch
+    - deutsch verhandlungssicher
+    - deutschkenntnisse
+    - muttersprachlich deutsch
+  French:
+    - fluent french
+    - native french
+    - français courant
+    - francais courant
+    - français langue maternelle
+    - maitrise du francais
+  Spanish:
+    - fluent spanish
+    - native spanish
+    - español nativo
+    - espanol nativo
+    - dominio del espanol
+    - español fluido
+  Italian:
+    - fluent italian
+    - native italian
+    - italiano madrelingua
+    - madrelingua italiana
+    - italiano fluente
+  Dutch:
+    - fluent dutch
+    - native dutch
+    - vloeiend nederlands
+    - nederlands vloeiend
+    - nederlandse moedertaal
+  Polish:
+    - fluent polish
+    - native polish
+    - biegły język polski
+    - plynie po polsku
+    - jezyk polski wymagany
+  Portuguese:
+    - fluent portuguese
+    - native portuguese
+    - português fluente
+    - portugues fluente
+    - português nativo
+
+# "No sponsorship" means the posting says the employer will not sponsor a visa,
+# or that the applicant must already have the right to work.
+visa_no:
+  - no visa sponsorship
+  - visa sponsorship is not
+  - not offer visa sponsorship
+  - do not offer sponsorship
+  - no sponsorship
+  - must have the right to work
+  - must be authorised to work
+  - must be authorized to work
+  - geen visumsponsoring
+  - geen visa sponsorship
+  - keine visumsponsoring
+  - kein visumsponsoring
+  - pas de sponsoring de visa
+  - sans parrainage de visa
+  - no patrocinamos visados
+  - sin patrocinio de visado
+  - niente sponsorizzazione del visto
+  - permesso di lavoro necessario
+  - nie oferujemy sponsorowania wizy
+  - bez sponsorowania wizy
+  - sem patrocinio de visto
+  - autorizacao de trabalho obrigatoria
+
+# "Sponsorship offered" means the posting says a visa can be sponsored,
+# or that relocation support is part of the offer.
+# A phrase must include a word that is not in "we offer no visa sponsorship",
+# because extra words such as "no" are ignored.
+visa_yes:
+  - visa sponsorship available
+  - sponsorship is available
+  - visa sponsorship possible
+  - visa sponsorship offered
+  - sponsorship offered
+  - we sponsor visas
+  - relocation support
+  - relocation assistance
+  - visum sponsoring mogelijk
+  - visa sponsoring möglich
+  - sponsoring de visa possible
+  - patrocinio de visado
+  - ofrecemos patrocinio de visado
+  - sponsorizzazione del visto disponibile
+  - supporto per il trasferimento
+  - oferujemy sponsorowanie wizy
+  - wsparcie relokacji
+  - patrocinio de visto disponivel
+  - apoio a realocacao

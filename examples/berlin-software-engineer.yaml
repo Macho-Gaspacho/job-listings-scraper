@@ -67,6 +67,20 @@ country: germany
 # Optional. When you leave this out, the run summary uses your computer's clock.
 # timezone: Europe/Berlin
 
+# Optional. Leave this out to keep every job that matches the title and place.
+# min_salary is a yearly number. Monthly pay is multiplied by 12, hourly by
+# 2,080, weekly by 52, and daily by 260. Jobs with no salary are kept.
+# The amount is not converted between currencies.
+# only_visa_sponsorship: true keeps "Sponsorship offered" and "Unknown".
+# Language and visa are guessed from the text.
+# filters:
+#   job_types: [Full-time, Internship]
+#   levels: [Entry, Unknown]
+#   min_salary: 30000
+#   exclude_title_words: [senior, lead]
+#   exclude_if_language_required: [German]
+#   only_visa_sponsorship: false
+
 results_per_search: 10
 posted_within_days: 30
 pause_seconds: 2

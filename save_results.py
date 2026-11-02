@@ -72,6 +72,12 @@ COLUMN_WIDTHS = {
     "I": 72,
     "J": 36,
     "K": 24,
+    "L": 28,
+    "M": 22,
+    "N": 12,
+    "O": 12,
+    "P": 28,
+    "Q": 46,
 }
 
 
@@ -295,6 +301,11 @@ def _write_excel(rows: list[dict], path: Path, place_names: list[str] | None = N
         "Use the dropdown arrows in the header row to filter. Choose yes to see only the new listings.",
         _place_sentence(place_names),
         "Description is a short snippet, not the full advert. Open the URL for the full posting.",
+        "Salary is the pay range when the source gave one, such as 40,000–50,000 EUR/year. A blank cell means the source did not say.",
+        "A minimum salary in the config compares a known yearly amount only. Monthly pay is multiplied by 12 and hourly pay by 2,080. Rows with no salary are kept.",
+        "Job type is Full-time, Part-time, Contract, Internship, or Temporary when the source says. Remote is Yes, No, or Unknown.",
+        "Level is Entry, Senior, or Unknown. It uses the source's level when there is one, otherwise words in the title.",
+        "Languages lists languages the description appears to require. Visa is No sponsorship, Sponsorship offered, or Unknown. Both are guessed from the text, not confirmed by the employer.",
         "Source type is company site, remote board, or aggregator. Sort or filter that column to see the less crowded sources first. Company site means the company's own careers page.",
         "The same title at the same company is kept once. The company site link is kept when a job board lists it too.",
         "Delete data/seen_jobs.json if you want the next run to treat every listing as new again.",

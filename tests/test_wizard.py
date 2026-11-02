@@ -57,6 +57,9 @@ def test_wizard_writes_a_config_from_answers(tmp_path):
             "",
             "backend, python",
             "senior, intern",
+            "",
+            "",
+            "",
             "1,2",
             "",
             "",
@@ -168,6 +171,9 @@ def test_wizard_country_wide_search_keeps_local_nurse_titles(
             "",
             "",
             "",
+            "",
+            "",
+            "",
             "n",
         ],
     )
@@ -206,6 +212,9 @@ def test_wizard_leaves_indeed_off_for_a_country_it_does_not_cover(tmp_path):
             "",
             "",
             "",
+            "",
+            "",
+            "",
             "n",
         ],
     )
@@ -228,6 +237,9 @@ def test_wizard_remote_in_another_country_can_stay_on_linkedin_only(tmp_path):
             "y",
             "France",
             "1",
+            "",
+            "",
+            "",
             "",
             "",
             "",
@@ -267,6 +279,9 @@ def test_wizard_treats_europe_as_a_linkedin_only_remote_area(tmp_path):
             "",
             "",
             "",
+            "",
+            "",
+            "",
             "n",
         ],
     )
@@ -291,6 +306,9 @@ def test_wizard_can_skip_remote_and_save_a_company(tmp_path):
             "Milan, Italy",
             "n",
             "y",
+            "",
+            "",
+            "",
             "",
             "",
             "",
@@ -332,6 +350,9 @@ def test_wizard_defaults_and_offers_to_search(tmp_path):
         [
             "C++ Developer",
             "Austin, United States",
+            "",
+            "",
+            "",
             "",
             "",
             "",
@@ -387,6 +408,9 @@ def test_wizard_backs_up_an_existing_config_only_after_confirmation(tmp_path):
         "",
         "",
         "",
+        "",
+        "",
+        "",
         "2",
         "",
         "",
@@ -395,6 +419,9 @@ def test_wizard_backs_up_an_existing_config_only_after_confirmation(tmp_path):
         "Paris, France",
         "n",
         "n",
+        "",
+        "",
+        "",
         "",
         "",
         "",
@@ -415,6 +442,40 @@ def test_wizard_backs_up_an_existing_config_only_after_confirmation(tmp_path):
     assert settings.roles == ["Teacher"]
     assert settings.country == "france"
     assert settings.sites == ["linkedin"]
+
+
+def test_wizard_can_limit_job_types_senior_roles_and_visa(tmp_path):
+    script, config = _run(
+        tmp_path,
+        [
+            "Nurse",
+            "Berlin, Germany",
+            "n",
+            "n",
+            "",
+            "",
+            "",
+            "y",
+            "Full-time, Internship",
+            "y",
+            "y",
+            "1,2",
+            "",
+            "",
+            "y",
+            "n",
+        ],
+    )
+    settings = load_config(config)
+    assert settings.filters.job_types == ("Full-time", "Internship")
+    assert settings.filters.levels == ("Entry", "Unknown")
+    assert settings.filters.only_visa_sponsorship is True
+    assert "Only certain job types?" in script.text
+    assert "Hide senior roles?" in script.text
+    assert "Do you need visa sponsorship?" in script.text
+    assert "guessed from the text" in script.text
+    assert "Job types: Full-time, Internship" in script.text
+    assert "Senior roles: hidden" in script.text
 
 
 def test_missing_config_starts_the_wizard(tmp_path, monkeypatch, capsys):

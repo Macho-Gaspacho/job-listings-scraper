@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 from urllib.parse import parse_qsl, urlsplit, urlunsplit, urlencode
 
+from enrichment import describe_posting
 from matching import normalise, phrase_matches
 from regions import classify_place, excluded_region
 
@@ -45,6 +46,12 @@ OUTPUT_FIELDS = [
     ("description", "Description"),
     ("role_searched", "Role searched"),
     ("place_searched", "Place searched"),
+    ("salary", "Salary"),
+    ("job_type", "Job type"),
+    ("is_remote", "Remote"),
+    ("level", "Level"),
+    ("languages", "Languages"),
+    ("visa", "Visa"),
 ]
 
 
@@ -242,6 +249,7 @@ def row_from_hit(hit: dict, role: str, place: str, snippet_characters: int) -> d
     title = clean_text(hit.get("title"))
     if not title:
         return None
+    described = describe_posting(hit)
     return {
         "title": title,
         "company": clean_text(hit.get("company")),
@@ -253,6 +261,16 @@ def row_from_hit(hit: dict, role: str, place: str, snippet_characters: int) -> d
         "description": snippet(hit.get("description"), snippet_characters),
         "role_searched": role,
         "place_searched": place,
+        "salary": described["salary"],
+        "salary_min": described["salary_min"],
+        "salary_max": described["salary_max"],
+        "salary_currency": described["salary_currency"],
+        "salary_period": described["salary_period"],
+        "job_type": described["job_type"],
+        "is_remote": described["is_remote"],
+        "level": described["level"],
+        "languages": described["languages"],
+        "visa": described["visa"],
     }
 
 

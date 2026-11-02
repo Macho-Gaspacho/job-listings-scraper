@@ -284,6 +284,20 @@ country: italy
 # This applies to Indeed and LinkedIn only. Company pages and remote
 # boards return their current open jobs, then this program filters them.
 # Higher numbers take longer and are more likely to be throttled.
+# Optional. Leave this out to keep every job that matches the title and place.
+# min_salary is a yearly number. Monthly pay is multiplied by 12, hourly by
+# 2,080, weekly by 52, and daily by 260. Jobs with no salary are kept.
+# The amount is not converted between currencies.
+# only_visa_sponsorship: true keeps "Sponsorship offered" and "Unknown".
+# Language and visa are guessed from the text.
+# filters:
+#   job_types: [Full-time, Internship]
+#   levels: [Entry, Unknown]
+#   min_salary: 30000
+#   exclude_title_words: [senior, lead]
+#   exclude_if_language_required: [German]
+#   only_visa_sponsorship: false
+
 results_per_search: 10
 
 # Ignore Indeed and LinkedIn postings older than this many days.
