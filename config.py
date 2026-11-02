@@ -179,6 +179,34 @@ def _load_companies(value: object) -> list[Company]:
     return companies
 
 
+def _provided(raw: dict, key: str):
+    """The value under key, or None when the setting was left out."""
+    if key not in raw:
+        return None
+    value = raw.get(key)
+    if value is None or value == "":
+        return None
+    return value
+
+
+def _whole_number(value: object, key: str, low: int, high: int) -> int:
+    """A whole number in range, or a sentence that names the key and the range."""
+    if type(value) is int and low <= value <= high:
+        return value
+    raise ValueError(f"{key} must be a whole number from {low} to {high}.")
+
+
+def _pause_seconds(raw: dict) -> float:
+    value = _provided(raw, "pause_seconds")
+    if value is None:
+        return 2.0
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError("pause_seconds must be a number from 1 upward.")
+    if value < 1:
+        raise ValueError("pause_seconds must be a number from 1 upward.")
+    return float(value)
+
+
 def _optional_phrases(block: dict, key: str) -> tuple[str, ...] | None:
     """None when the key was left out. An empty list is kept as empty."""
     if key not in block:
@@ -266,6 +294,10 @@ def load_config(path: str | Path) -> Settings:
         if not isinstance(entry, dict) or not str(entry.get("name") or "").strip():
             raise ValueError("Each item under 'locations' needs a name.")
         distance = entry.get("distance_miles")
+        if distance in (None, ""):
+            miles = None
+        else:
+            miles = _whole_number(distance, "distance_miles", 0, 200)
         places.append(
             Place(
                 name=str(entry["name"]).strip(),
@@ -278,7 +310,7 @@ def load_config(path: str | Path) -> Settings:
                     or entry["name"]
                 ).strip(),
                 remote=bool(entry.get("remote", False)),
-                distance_miles=None if distance in (None, "") else int(distance),
+                distance_miles=miles,
             )
         )
     if not places:
@@ -289,12 +321,10 @@ def load_config(path: str | Path) -> Settings:
     if not sites and not company_pages_enabled and not remote_boards:
         raise ValueError("Turn on at least one source in config.yaml.")
 
-    results = int(raw.get("results_per_search") or 10)
-    days = int(raw.get("posted_within_days") or 30)
-    if results < 1:
-        raise ValueError("results_per_search should be at least 1.")
-    if days < 1:
-        raise ValueError("posted_within_days should be at least 1.")
+    results_value = _provided(raw, "results_per_search")
+    results = 10 if results_value is None else _whole_number(results_value, "results_per_search", 1, 200)
+    days_value = _provided(raw, "posted_within_days")
+    days = 30 if days_value is None else _whole_number(days_value, "posted_within_days", 1, 365)
 
     raw_keywords = raw.get("title_keywords") or {}
     if not isinstance(raw_keywords, dict):
@@ -317,7 +347,7 @@ def load_config(path: str | Path) -> Settings:
         country=country,
         results_per_search=results,
         posted_within_days=days,
-        pause_seconds=float(raw.get("pause_seconds") or 0),
+        pause_seconds=_pause_seconds(raw),
         fetch_descriptions=bool(raw.get("fetch_descriptions", True)),
         snippet_characters=int(raw.get("snippet_characters") or 280),
         output_dir=output_dir,

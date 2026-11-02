@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import csv
 import json
+import os
+from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
@@ -19,6 +22,43 @@ HEADER_FILL = PatternFill("solid", fgColor="1F4E79")
 HEADER_FONT = Font(bold=True, color="FFFFFF")
 NEW_FONT = Font(bold=True, color="1B7A3A")
 LINK_FONT = Font(color="0563C1", underline="single")
+
+# Characters Excel would treat as the start of a formula, including CSV injection.
+_FORMULA_STARTS = ("=", "+", "-", "@", "\t", "\r")
+
+
+def safe_cell(value):
+    """Keep text as text when a spreadsheet would otherwise run it as a formula.
+
+    Leading spaces are ignored for the check, so " =1+1" is quoted too.
+    A single quote in front is how Excel stores "this is text".
+    """
+    if not isinstance(value, str):
+        return value
+    if value.lstrip(" ").startswith(_FORMULA_STARTS):
+        return "'" + value
+    return value
+
+
+def _atomic_replace(path: Path, write_tmp) -> None:
+    """Write a sibling temp file, then replace the real one.
+
+    A crash mid-write leaves the previous file in place.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        write_tmp(tmp)
+        os.replace(tmp, path)
+    except Exception:
+        if tmp.exists():
+            tmp.unlink(missing_ok=True)
+        raise
+
+
+def _write_text_atomic(path: Path, text: str) -> None:
+    _atomic_replace(path, lambda tmp: tmp.write_text(text, encoding="utf-8"))
+
 
 COLUMN_WIDTHS = {
     "A": 22,
@@ -36,20 +76,53 @@ COLUMN_WIDTHS = {
 
 
 def load_seen(path: str | Path) -> set[str]:
-    """Links saved by earlier runs. A missing file means "nothing yet"."""
+    """Links saved by earlier runs. A missing file means "nothing yet".
+
+    A broken file is renamed aside and this run starts with an empty memory,
+    so one bad file cannot stop the search or wipe the old bytes in place.
+    """
     file_path = Path(path)
     if not file_path.exists():
         return set()
-    data = json.loads(file_path.read_text(encoding="utf-8"))
-    return set(data.get("seen_keys") or [])
+    try:
+        data = json.loads(file_path.read_text(encoding="utf-8"))
+        return _seen_keys(data)
+    except (json.JSONDecodeError, ValueError, TypeError, AttributeError):
+        dest = _rename_corrupt(file_path)
+        print(
+            f"Could not read {file_path.name}. It was renamed to {dest.name}. "
+            "This run will treat every listing as new.",
+            flush=True,
+        )
+        return set()
+
+
+def _seen_keys(data: object) -> set[str]:
+    if not isinstance(data, dict):
+        raise ValueError("The seen file should be a JSON object.")
+    raw = data.get("seen_keys", [])
+    if raw is None:
+        raw = []
+    if not isinstance(raw, list) or any(not isinstance(item, str) for item in raw):
+        raise ValueError("seen_keys should be a list of text.")
+    return set(raw)
+
+
+def _rename_corrupt(file_path: Path) -> Path:
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    dest = file_path.with_name(f"seen_jobs.corrupt-{stamp}.json")
+    counter = 2
+    while dest.exists():
+        dest = file_path.with_name(f"seen_jobs.corrupt-{stamp}-{counter}.json")
+        counter += 1
+    os.replace(file_path, dest)
+    return dest
 
 
 def save_seen(path: str | Path, keys: set[str]) -> None:
     """Write the memory file. Sorted keys keep the file stable between runs."""
-    file_path = Path(path)
-    file_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {"seen_keys": sorted(keys)}
-    file_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    _write_text_atomic(Path(path), json.dumps(payload, indent=2) + "\n")
 
 
 def _bump(counts: dict[str, dict[str, int]], name: str, is_new: bool) -> None:
@@ -91,12 +164,8 @@ def write_daily_files(rows: list[dict], new_csv_path: str | Path, last_run_path:
     """
     summary = run_summary(rows, run_at)
     new_rows = [row for row in rows if row.get("is_new") == "yes"]
-    csv_file = Path(new_csv_path)
-    csv_file.parent.mkdir(parents=True, exist_ok=True)
-    _write_csv(new_rows, csv_file)
-    last_run = Path(last_run_path)
-    last_run.parent.mkdir(parents=True, exist_ok=True)
-    last_run.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+    _write_csv(new_rows, Path(new_csv_path))
+    _write_text_atomic(Path(last_run_path), json.dumps(summary, indent=2) + "\n")
     return summary
 
 
@@ -120,24 +189,30 @@ def write_outputs(
     csv_path: str | Path,
     excel_path: str | Path,
     place_names: list[str] | None = None,
-) -> None:
-    """Write both spreadsheets. CSV opens anywhere. Excel has filters and links."""
+) -> Path:
+    """Write both spreadsheets. CSV opens anywhere. Excel has filters and links.
+
+    Returns the Excel path that was actually written. That can differ when
+    jobs.xlsx is open in Excel and the file is saved under a new name.
+    """
     csv_file = Path(csv_path)
     excel_file = Path(excel_path)
-    csv_file.parent.mkdir(parents=True, exist_ok=True)
-    excel_file.parent.mkdir(parents=True, exist_ok=True)
     _write_csv(rows, csv_file)
-    _write_excel(rows, excel_file, place_names)
+    return _write_excel(rows, excel_file, place_names)
 
 
 def _write_csv(rows: list[dict], path: Path) -> None:
     # utf-8-sig adds a marker so Excel on Windows shows accents (è, à) correctly.
-    headers = [label for _, label in OUTPUT_FIELDS]
-    with path.open("w", newline="", encoding="utf-8-sig") as handle:
-        writer = csv.writer(handle)
-        writer.writerow(headers)
-        for row in rows:
-            writer.writerow([row.get(key, "") for key, _ in OUTPUT_FIELDS])
+    headers = [safe_cell(label) for _, label in OUTPUT_FIELDS]
+
+    def write(tmp: Path) -> None:
+        with tmp.open("w", newline="", encoding="utf-8-sig") as handle:
+            writer = csv.writer(handle)
+            writer.writerow(headers)
+            for row in rows:
+                writer.writerow([safe_cell(row.get(key, "")) for key, _ in OUTPUT_FIELDS])
+
+    _atomic_replace(path, write)
 
 
 def _place_sentence(place_names: list[str] | None) -> str:
@@ -152,11 +227,23 @@ def _place_sentence(place_names: list[str] | None) -> str:
     return prefix + f"Place searched is {shown}."
 
 
-def _write_excel(rows: list[dict], path: Path, place_names: list[str] | None = None) -> None:
+def _http_link(url: object) -> str | None:
+    """An http(s) address, or None. Other schemes are left as plain text."""
+    if not isinstance(url, str):
+        return None
+    text = url.strip()
+    if not text:
+        return None
+    if urlparse(text).scheme.lower() not in {"http", "https"}:
+        return None
+    return text
+
+
+def _write_excel(rows: list[dict], path: Path, place_names: list[str] | None = None) -> Path:
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "Jobs"
-    headers = [label for _, label in OUTPUT_FIELDS]
+    headers = [safe_cell(label) for _, label in OUTPUT_FIELDS]
     sheet.append(headers)
     for cell in sheet[1]:
         cell.fill = HEADER_FILL
@@ -168,17 +255,17 @@ def _write_excel(rows: list[dict], path: Path, place_names: list[str] | None = N
         index for index, (key, _) in enumerate(OUTPUT_FIELDS, start=1) if key == "description"
     )
     for row in rows:
-        values = [row.get(key, "") for key, _ in OUTPUT_FIELDS]
+        values = [safe_cell(row.get(key, "")) for key, _ in OUTPUT_FIELDS]
         sheet.append(values)
         row_number = sheet.max_row
         if row.get("is_new") == "yes":
             first = sheet.cell(row_number, 1)
             first.fill = NEW_FILL
             first.font = NEW_FONT
-        url = row.get("url") or ""
-        if url:
+        link_url = _http_link(row.get("url") or "")
+        if link_url:
             link = sheet.cell(row_number, url_column)
-            link.hyperlink = url
+            link.hyperlink = link_url
             link.font = LINK_FONT
         sheet.cell(row_number, description_column).alignment = Alignment(
             wrap_text=True, vertical="top"
@@ -213,6 +300,18 @@ def _write_excel(rows: list[dict], path: Path, place_names: list[str] | None = N
         "Delete data/seen_jobs.json if you want the next run to treat every listing as new again.",
     ]
     for offset, line in enumerate(lines, start=3):
-        about.cell(offset, 1, line)
+        about.cell(offset, 1, safe_cell(line))
     about.column_dimensions["A"].width = 120
-    workbook.save(path)
+    try:
+        _atomic_replace(path, lambda tmp: workbook.save(tmp))
+    except PermissionError:
+        # Windows refuses to replace a workbook that Excel still has open.
+        stamp = datetime.now().strftime("%Y%m%d-%H%M")
+        alternate = path.with_name(f"{path.stem}-{stamp}{path.suffix}")
+        _atomic_replace(alternate, lambda tmp: workbook.save(tmp))
+        print(
+            f"{path.name} is open in Excel; saved as {alternate} instead",
+            flush=True,
+        )
+        return alternate
+    return path

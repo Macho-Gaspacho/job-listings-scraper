@@ -20,7 +20,7 @@ from email.utils import parsedate_to_datetime
 from html import unescape
 
 from config import Company, Settings
-from environment import certificate_hint
+from environment import certificate_hint, network_problem, report_skip
 from regions import build_location_rules
 from listings import (
     classify_place,
@@ -42,19 +42,68 @@ USER_AGENT = (
 DEFAULT_WWR_FEED = "https://weworkremotely.com/remote-jobs.rss"
 
 
-def http_get(url: str) -> bytes:
-    """Download one public URL. Raises RuntimeError when the site says no."""
+# Seconds to wait before try 2 and try 3. Retry-After replaces these when it
+# is a whole number of seconds, and is never allowed to be longer than 30.
+_RETRY_WAITS = (2, 5)
+_RETRY_CAP_SECONDS = 30
+
+
+def http_get(url: str, sleep=time.sleep) -> bytes:
+    """Download one public URL. Raises RuntimeError when the site says no.
+
+    A 429, a 5xx, or a timeout is tried up to 3 times. `sleep` is called with
+    the seconds to wait between tries so tests can record the waits instead of
+    pausing.
+    """
+    last_error: Exception | None = None
+    for attempt in range(3):
+        try:
+            return _read_url(url)
+        except Exception as exc:
+            last_error = exc
+            if attempt == 2 or not _should_retry(exc):
+                _reraise_download(exc)
+            sleep(_wait_seconds(exc, _RETRY_WAITS[attempt]))
+    raise RuntimeError("the site could not be reached") from last_error
+
+
+def _read_url(url: str) -> bytes:
     request = urllib.request.Request(
         url,
         headers={"User-Agent": USER_AGENT, "Accept": "application/json, application/rss+xml, */*"},
     )
-    try:
-        with urllib.request.urlopen(request, timeout=45) as response:
-            return response.read(20_000_000)
-    except urllib.error.HTTPError as exc:
+    with urllib.request.urlopen(request, timeout=45) as response:
+        return response.read(20_000_000)
+
+
+def _should_retry(exc: Exception) -> bool:
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code == 429 or 500 <= exc.code <= 599
+    return _is_timeout(exc)
+
+
+def _is_timeout(exc: BaseException) -> bool:
+    if isinstance(exc, TimeoutError):
+        return True
+    reason = getattr(exc, "reason", None)
+    if isinstance(reason, BaseException) and reason is not exc and _is_timeout(reason):
+        return True
+    return "timed out" in str(exc).lower()
+
+
+def _wait_seconds(exc: Exception, default: float) -> float:
+    if isinstance(exc, urllib.error.HTTPError):
+        headers = getattr(exc, "headers", None)
+        raw = None if headers is None else headers.get("Retry-After")
+        if raw is not None and str(raw).strip().isdigit():
+            return min(int(str(raw).strip()), _RETRY_CAP_SECONDS)
+    return min(float(default), _RETRY_CAP_SECONDS)
+
+
+def _reraise_download(exc: Exception) -> None:
+    if isinstance(exc, urllib.error.HTTPError):
         raise RuntimeError(f"HTTP {exc.code}") from exc
-    except Exception as exc:
-        raise RuntimeError(str(exc)) from exc
+    raise RuntimeError(str(exc)) from exc
 
 
 def _iso_date(value: object) -> str:
@@ -492,7 +541,12 @@ def _remote_jobs(source_id: str, getter, settings: Settings) -> list[dict]:
             try:
                 rows.extend(parse_we_work_remotely(getter(url)))
             except Exception as exc:
-                errors.append(str(exc))
+                hint = certificate_hint.note(exc)
+                if hint:
+                    print(hint, flush=True)
+                lines = str(exc).strip().splitlines()
+                detail = network_problem(exc) or (lines[0] if lines else "")
+                errors.append(detail or exc.__class__.__name__)
         # One category feed can move without taking the others with it.
         if not rows and errors:
             raise RuntimeError(errors[0])
@@ -542,10 +596,7 @@ def collect_board_listings(settings: Settings, pause=time.sleep, getter=http_get
                 )
             except Exception as exc:
                 failures += 1
-                print(f"  Skipped ({exc}).", flush=True)
-                hint = certificate_hint.note(exc)
-                if hint:
-                    print(hint, flush=True)
+                report_skip(exc)
                 found = []
             else:
                 print(f"  Kept {len(found)} matching listings.", flush=True)
@@ -561,10 +612,7 @@ def collect_board_listings(settings: Settings, pause=time.sleep, getter=http_get
                 )
             except Exception as exc:
                 failures += 1
-                print(f"  Skipped ({exc}).", flush=True)
-                hint = certificate_hint.note(exc)
-                if hint:
-                    print(hint, flush=True)
+                report_skip(exc)
                 found = []
             else:
                 print(f"  Kept {len(found)} matching listings.", flush=True)

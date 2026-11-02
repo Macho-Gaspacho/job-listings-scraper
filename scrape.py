@@ -33,7 +33,7 @@ try:
     from boards import collect_board_listings
     from config import Settings, load_config
     from daily import commit_daily_files, push_daily_commit
-    from environment import certificate_hint, python_version_problem
+    from environment import python_version_problem, report_skip
     from listings import apply_new_flags, dedupe, identity_keys, sort_rows, title_is_relevant
     from save_results import load_seen, save_seen, write_daily_files, write_outputs
     from sources import fetch_listings
@@ -77,10 +77,7 @@ def collect_listings(settings: Settings, fetch, pause=time.sleep) -> tuple[list[
             found = fetch(role, place, site)
         except Exception as exc:
             failures += 1
-            print(f"  Skipped ({exc}).", flush=True)
-            hint = certificate_hint.note(exc)
-            if hint:
-                print(hint, flush=True)
+            report_skip(exc)
             found = []
         else:
             phrases = (settings.title_keywords or {}).get(role, [])
@@ -106,8 +103,11 @@ def collect_listings(settings: Settings, fetch, pause=time.sleep) -> tuple[list[
     return dedupe(rows), failures
 
 
-def _run_search(config_path: Path, daily: bool) -> int:
-    """Load a saved config, search, and write the spreadsheet."""
+def _run_search(config_path: Path, daily: bool, fetch=None, getter=None) -> int:
+    """Load a saved config, search, and write the spreadsheet.
+
+    fetch(role, place, site) and getter(url) stand in for the live sites in tests.
+    """
     project_dir = Path(__file__).resolve().parent
     try:
         settings = load_config(config_path)
@@ -116,18 +116,34 @@ def _run_search(config_path: Path, daily: bool) -> int:
         return 1
 
     seen = load_seen(settings.seen_file)
-    board_rows, board_failures = collect_board_listings(settings)
+    if getter is None:
+        board_rows, board_failures = collect_board_listings(settings)
+    else:
+        board_rows, board_failures = collect_board_listings(settings, getter=getter)
     aggregator_rows: list[dict] = []
     aggregator_failures = 0
     if settings.sites:
-        aggregator_rows, aggregator_failures = collect_listings(
-            settings,
-            lambda role, place, site: fetch_listings(settings, role, place, site),
-        )
+        def run_fetch(role, place, site):
+            if fetch is not None:
+                return fetch(role, place, site)
+            return fetch_listings(settings, role, place, site)
+
+        aggregator_rows, aggregator_failures = collect_listings(settings, run_fetch)
     # Dedupe again across company pages, remote boards, and Indeed/LinkedIn.
     rows = dedupe(board_rows + aggregator_rows)
     rows = sort_rows(apply_new_flags(rows, seen))
-    write_outputs(
+    failures = board_failures + aggregator_failures
+    searches = len(settings.roles) * len(settings.places) * len(settings.sites)
+    company_count = sum(1 for company in settings.companies or [] if company.enabled)
+    attempts = searches + (company_count if settings.company_pages_enabled else 0)
+    attempts += len(settings.remote_boards or [])
+    if attempts and failures == attempts:
+        print(
+            "Nothing was downloaded (no internet?). "
+            f"Your previous results in {settings.output_dir} were kept."
+        )
+        return 1
+    excel_path = write_outputs(
         rows,
         settings.csv_path,
         settings.excel_path,
@@ -145,7 +161,7 @@ def _run_search(config_path: Path, daily: bool) -> int:
     summary = write_daily_files(rows, new_csv, last_run, run_at)
     print()
     print(f"Saved {len(rows)} listings ({summary['new_listings']} new).")
-    print(f"Excel: {settings.excel_path}")
+    print(f"Excel: {excel_path}")
     print(f"CSV:   {settings.csv_path}")
     print(f"New since last run: {new_csv}")
     print(f"Run summary: {last_run}")
@@ -154,15 +170,6 @@ def _run_search(config_path: Path, daily: bool) -> int:
             "No listings came back. Try a broader role, add a company in "
             "config.yaml, or raise posted_within_days."
         )
-    failures = board_failures + aggregator_failures
-    searches = len(settings.roles) * len(settings.places) * len(settings.sites)
-    company_count = sum(1 for company in settings.companies or [] if company.enabled)
-    attempts = searches + (company_count if settings.company_pages_enabled else 0)
-    attempts += len(settings.remote_boards or [])
-    if attempts and failures == attempts:
-        print("Every search failed. Check your internet connection and config.yaml.")
-        print("The daily files were written locally and were not committed.")
-        return 1
     if daily:
         day = f"{run_at.day} {run_at.strftime('%B %Y')}"
         message = (
@@ -207,16 +214,20 @@ def main(argv: list[str] | None = None) -> int:
             "the new-jobs sheet, and the run summary."
         ),
     )
-    args = parser.parse_args(argv)
-    config_path = Path(args.config)
-    if args.setup or not config_path.exists():
-        if not config_path.exists():
-            print("There is no config.yaml yet. Answer a few questions and one will be created.")
-        return setup_wizard.run_wizard(
-            config_path,
-            run_search=lambda path: _run_search(Path(path), daily=args.daily),
-        )
-    return _run_search(config_path, daily=args.daily)
+    try:
+        args = parser.parse_args(argv)
+        config_path = Path(args.config)
+        if args.setup or not config_path.exists():
+            if not config_path.exists():
+                print("There is no config.yaml yet. Answer a few questions and one will be created.")
+            return setup_wizard.run_wizard(
+                config_path,
+                run_search=lambda path: _run_search(Path(path), daily=args.daily),
+            )
+        return _run_search(config_path, daily=args.daily)
+    except KeyboardInterrupt:
+        print("Stopped. Results collected so far were not saved.")
+        return 130
 
 
 if __name__ == "__main__":

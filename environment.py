@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import urllib.error
 
 
 def python_version_problem(version: tuple[int, ...]) -> str | None:
@@ -73,3 +74,72 @@ def explain_certificate_error(exc: BaseException) -> None:
     message = certificate_hint.note(exc)
     if message:
         print(message, flush=True)
+
+
+def _iter_exceptions(exc: BaseException):
+    """The error itself, plus the errors that caused it."""
+    seen: set[int] = set()
+    pending: list[object] = [exc]
+    while pending:
+        current = pending.pop()
+        if not isinstance(current, BaseException):
+            continue
+        marker = id(current)
+        if marker in seen:
+            continue
+        seen.add(marker)
+        yield current
+        pending.append(current.__cause__)
+        pending.append(current.__context__)
+        pending.append(getattr(current, "reason", None))
+
+
+def network_problem(exc: BaseException) -> str | None:
+    """One plain sentence for a connection problem, or None for other errors."""
+    http_codes: list[int] = []
+    saw_timeout = False
+    saw_url = False
+    texts: list[str] = []
+    for item in _iter_exceptions(exc):
+        texts.append(str(item))
+        if isinstance(item, urllib.error.HTTPError):
+            http_codes.append(item.code)
+        elif isinstance(item, urllib.error.URLError):
+            saw_url = True
+        if isinstance(item, TimeoutError):
+            saw_timeout = True
+    blob = " ".join(texts).lower()
+    for code in http_codes:
+        if code == 403:
+            return "The site refused the request (403)."
+        if code == 429:
+            return "The site asked us to slow down (429). Wait a bit and try again."
+        if 500 <= code <= 599:
+            return f"The site had a problem ({code}). Try again later."
+    if "http 403" in blob:
+        return "The site refused the request (403)."
+    if "http 429" in blob:
+        return "The site asked us to slow down (429). Wait a bit and try again."
+    if "certificate_verify_failed" in blob or "certificate verify failed" in blob:
+        return "The website certificate could not be verified."
+    if saw_timeout or "timed out" in blob:
+        return "The site took too long to answer."
+    if "proxy" in blob:
+        return "Could not connect through the proxy. Check your network settings."
+    if saw_url or "connection refused" in blob or "urlopen" in blob:
+        return "Could not connect to the site. Check your internet connection."
+    return None
+
+
+def report_skip(exc: BaseException) -> None:
+    """Print a one-line reason for a skipped site, then the Mac certificate hint."""
+    friendly = network_problem(exc)
+    if friendly:
+        print(f"  Skipped. {friendly}", flush=True)
+    else:
+        text = str(exc).strip().splitlines()
+        detail = text[0] if text else exc.__class__.__name__
+        print(f"  Skipped ({detail}).", flush=True)
+    hint = certificate_hint.note(exc)
+    if hint:
+        print(hint, flush=True)

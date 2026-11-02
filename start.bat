@@ -31,16 +31,27 @@ pause
 exit /b 1
 
 :found
-if exist ".venv\Scripts\python.exe" goto install
+if exist ".venv\Scripts\python.exe" goto hash_requirements
 echo Creating a private Python folder (.venv)...
 %PYTHON% -m venv .venv
 if errorlevel 1 goto venv_failed
 
-:install
+REM Skip pip when .venv\.requirements.sha256 matches the sha256 of requirements.txt.
+:hash_requirements
+".venv\Scripts\python.exe" -c "import hashlib,pathlib,sys; h=hashlib.sha256(pathlib.Path('requirements.txt').read_bytes()).hexdigest(); p=pathlib.Path('.venv/.requirements.sha256'); same=p.is_file() and p.read_text(encoding='utf-8').strip()==h; sys.exit(0 if same else 2)"
+if "%errorlevel%"=="0" goto tools_ready
+
 echo Installing the tools this program needs. The first time can take a few minutes...
 ".venv\Scripts\python.exe" -m pip install -r requirements.txt
 if errorlevel 1 goto pip_failed
+".venv\Scripts\python.exe" -c "import hashlib,pathlib; h=hashlib.sha256(pathlib.Path('requirements.txt').read_bytes()).hexdigest(); pathlib.Path('.venv/.requirements.sha256').write_text(h + chr(10), encoding='utf-8')"
+goto run_scrape
 
+:tools_ready
+echo The tools are already installed.
+goto run_scrape
+
+:run_scrape
 echo.
 ".venv\Scripts\python.exe" scrape.py
 set "STATUS=%errorlevel%"
@@ -56,6 +67,11 @@ pause
 exit /b 1
 
 :pip_failed
+if exist ".venv\.requirements.sha256" goto pip_keep
 echo Could not install the tools. Check your internet connection and try again.
 pause
 exit /b 1
+
+:pip_keep
+echo Could not update the tools (no internet?). Continuing with the ones already installed.
+goto run_scrape

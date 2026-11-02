@@ -458,16 +458,20 @@ def _ask_and_save(path: Path, io: IO, run_search) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Answer a few questions and write config.yaml."
-    )
-    parser.add_argument(
-        "--config",
-        default=str(Path(__file__).resolve().parent / "config.yaml"),
-        help="Where to write the settings. The default is config.yaml in this folder.",
-    )
-    args = parser.parse_args(argv)
-    return run_wizard(args.config)
+    try:
+        parser = argparse.ArgumentParser(
+            description="Answer a few questions and write config.yaml."
+        )
+        parser.add_argument(
+            "--config",
+            default=str(Path(__file__).resolve().parent / "config.yaml"),
+            help="Where to write the settings. The default is config.yaml in this folder.",
+        )
+        args = parser.parse_args(argv)
+        return run_wizard(args.config)
+    except KeyboardInterrupt:
+        print("Stopped. Nothing was changed.")
+        return 130
 
 
 if __name__ == "__main__":
