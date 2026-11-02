@@ -31,6 +31,20 @@ level_senior:
   - lead
   - principal
   - head
+  - staff
+  # Equivalents of senior, staff, and principal in the starter languages
+  # used by synonyms/roles.yaml (de, fr, it, es, nl, pl, pt).
+  # Matching is whole words, so "staff" does not match "staffing".
+  - leitend
+  - leitende
+  - leitender
+  - leitenden
+  - principale
+  - hoofd
+  - starszy
+  - starsza
+  - główny
+  - główna
 
 languages:
   English:

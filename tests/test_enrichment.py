@@ -93,8 +93,16 @@ def test_remote_and_job_type_are_normalised():
         ("Lead Designer", "Senior"),
         ("Principal Engineer", "Senior"),
         ("Head of Marketing", "Senior"),
+        ("Staff Software Engineer", "Senior"),
+        ("Staff Nurse", "Senior"),
+        ("Leitender Entwickler", "Senior"),
+        ("Ingénieure principale", "Senior"),
+        ("Hoofd Verpleegkundige", "Senior"),
+        ("Starszy księgowy", "Senior"),
+        ("Główny księgowy", "Senior"),
         ("Software Engineer", "Unknown"),
         ("Internal Communications", "Unknown"),
+        ("Staffing Coordinator", "Unknown"),
     ],
 )
 def test_level_is_inferred_from_title_words_in_several_languages(title, level):

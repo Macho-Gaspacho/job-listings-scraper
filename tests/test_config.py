@@ -328,34 +328,89 @@ def test_checked_in_examples_follow_their_own_cities():
     )
     assert [row["place_searched"] for row in berlin_rows] == ["Berlin, Germany"]
 
-    milan = load_config(root / "examples" / "milan-product-manager.yaml")
-    assert milan.country == "italy"
-    assert milan.wwr_categories == ("product", "sales-and-marketing", "management-and-finance")
-    milan_rows = filter_board_jobs(
+    names = sorted(path.name for path in (root / "examples").glob("*.yaml"))
+    assert names == [
+        "accountant-toronto-canada.yaml",
+        "berlin-software-engineer.yaml",
+        "graduate-marketing-spain.yaml",
+        "nurse-netherlands.yaml",
+        "remote-customer-support-worldwide.yaml",
+        "warehouse-worker-poland.yaml",
+    ]
+    for name in names:
+        loaded = load_config(root / "examples" / name)
+        assert loaded.roles
+        assert loaded.country
+
+    nurse = load_config(root / "examples" / "nurse-netherlands.yaml")
+    assert nurse.country == "netherlands"
+    assert "verpleegkundige" in nurse.title_keywords["Nurse"]
+    nurse_rows = filter_board_jobs(
         [
             {
-                "title": "Product Manager",
+                "title": "Verpleegkundige",
                 "company": "A",
-                "location": "Milano",
+                "location": "Amsterdam",
                 "is_remote": False,
-                "url": "https://example.com/milano",
+                "url": "https://example.com/amsterdam",
                 "description": "",
                 "source": "Example",
             },
             {
-                "title": "Product Manager",
+                "title": "Verpleegkundige",
                 "company": "A",
-                "location": "Remote - US only",
-                "is_remote": True,
-                "url": "https://example.com/us",
+                "location": "Warsaw, Poland",
+                "is_remote": False,
+                "url": "https://example.com/warsaw",
                 "description": "",
                 "source": "Example",
             },
         ],
-        milan,
+        nurse,
         "company site",
     )
-    assert [row["url"] for row in milan_rows] == ["https://example.com/milano"]
-    assert milan_rows[0]["place_searched"] == "Milan, Italy"
+    assert [row["url"] for row in nurse_rows] == ["https://example.com/amsterdam"]
+    assert nurse_rows[0]["place_searched"] == "Amsterdam, Netherlands"
+
+    graduate = load_config(root / "examples" / "graduate-marketing-spain.yaml")
+    assert graduate.filters.levels == ("Entry", "Unknown")
+
+    worldwide = load_config(root / "examples" / "remote-customer-support-worldwide.yaml")
+    assert "remote_ok" in worldwide.remote_boards
+    remote_rows = filter_board_jobs(
+        [
+            {
+                "title": "Customer Support",
+                "company": "A",
+                "location": "Anywhere in the World",
+                "is_remote": True,
+                "url": "https://example.com/world",
+                "description": "",
+                "source": "Example",
+            },
+            {
+                "title": "Customer Support",
+                "company": "A",
+                "location": "Remote - Germany only",
+                "is_remote": True,
+                "url": "https://example.com/de",
+                "description": "",
+                "source": "Example",
+            },
+            {
+                "title": "Customer Support",
+                "company": "A",
+                "location": "Warsaw, Poland",
+                "is_remote": False,
+                "url": "https://example.com/office",
+                "description": "",
+                "source": "Example",
+            },
+        ],
+        worldwide,
+        "remote board",
+    )
+    assert [row["url"] for row in remote_rows] == ["https://example.com/world"]
+    assert remote_rows[0]["place_searched"] == "Remote"
 
 

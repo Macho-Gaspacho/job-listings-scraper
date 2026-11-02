@@ -1,0 +1,67 @@
+# ============================================================
+# Example: remote customer support, open worldwide.
+# Indeed and LinkedIn still need a country, so this file asks them for
+# remote jobs in the United States. Change `country` and the Remote
+# location if you need a different country. Remote boards keep postings
+# that say worldwide, anywhere, or global, plus that country.
+# To try this search:
+#     cp examples/remote-customer-support-worldwide.yaml config.yaml
+#     python scrape.py
+# ============================================================
+
+roles:
+  - Customer Support
+
+require_title_match: true
+
+title_keywords:
+  Customer Support:
+    - customer support
+    - customer service
+
+locations:
+  - name: Remote
+    indeed_location: United States
+    linkedin_location: United States
+    remote: true
+
+sources:
+  - id: company_pages
+    enabled: false
+    kind: company site
+  - id: we_work_remotely
+    enabled: true
+    kind: remote board
+  - id: remote_ok
+    enabled: true
+    kind: remote board
+  - id: remotive
+    enabled: false
+    kind: remote board
+  - id: working_nomads
+    enabled: false
+    kind: remote board
+  - id: indeed
+    enabled: true
+    kind: aggregator
+  - id: linkedin
+    enabled: true
+    kind: aggregator
+
+companies: []
+
+country: usa
+
+# timezone: UTC
+
+results_per_search: 10
+posted_within_days: 30
+pause_seconds: 2
+fetch_descriptions: true
+snippet_characters: 280
+
+output:
+  directory: output
+  csv: jobs.csv
+  excel: jobs.xlsx
+  seen_file: data/seen_jobs.json

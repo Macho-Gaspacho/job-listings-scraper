@@ -312,8 +312,10 @@ def infer_level(title: object, job_level: object, signals: dict | None = None) -
     """Entry, Senior, or Unknown.
 
     A level sent by the site wins. Otherwise the title is checked.
-    Words such as intern and senior are whole words, so intern does not
-    match internal. Entry and senior together stay Unknown.
+    Words such as intern, senior, staff, and principal are whole words,
+    so intern does not match internal and staff does not match staffing.
+    The same level words in the starter languages count too.
+    Entry and senior together stay Unknown.
     """
     table = load_signals() if signals is None else signals
     stated = _matched_level(job_level, table)

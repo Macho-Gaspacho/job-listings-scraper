@@ -308,6 +308,7 @@ def _write_excel(rows: list[dict], path: Path, place_names: list[str] | None = N
         "Languages lists languages the description appears to require. Visa is No sponsorship, Sponsorship offered, or Unknown. Both are guessed from the text, not confirmed by the employer.",
         "Source type is company site, remote board, or aggregator. Sort or filter that column to see the less crowded sources first. Company site means the company's own careers page.",
         "The same title at the same company is kept once. The company site link is kept when a job board lists it too.",
+        "Data sources: the company career pages and job boards you turned on, including Indeed and LinkedIn when they are enabled. Listings from Remote OK are included under their terms. Credit Remote OK: https://remoteok.com",
         "Delete data/seen_jobs.json if you want the next run to treat every listing as new again.",
     ]
     for offset, line in enumerate(lines, start=3):

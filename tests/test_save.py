@@ -77,6 +77,8 @@ def test_write_outputs_creates_csv_and_excel_with_friendly_headers(tmp_path):
     assert "Milan" not in about
     assert "location name from your config" in about
     assert "guessed from the text" in about
+    assert "Data sources" in about
+    assert "https://remoteok.com" in about
 
 
 def test_new_columns_show_salary_and_pass_through_safe_cell(tmp_path):

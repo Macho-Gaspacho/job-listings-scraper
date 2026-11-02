@@ -1,0 +1,79 @@
+# ============================================================
+# Example: a nurse in Amsterdam, and remote nursing jobs in the Netherlands.
+# Dutch titles are included so a local posting is not missed.
+# To try this search:
+#     cp examples/nurse-netherlands.yaml config.yaml
+#     python scrape.py
+# ============================================================
+
+roles:
+  - Nurse
+
+require_title_match: true
+
+title_keywords:
+  Nurse:
+    - nurse
+    - registered nurse
+    - verpleegkundige
+    - verpleger
+    - verpleegster
+
+locations:
+  - name: Amsterdam, Netherlands
+    indeed_location: Amsterdam, Netherlands
+    linkedin_location: Amsterdam, Netherlands
+    remote: false
+    distance_miles: 25
+  - name: Remote
+    indeed_location: Netherlands
+    linkedin_location: Netherlands
+    remote: true
+
+sources:
+  - id: company_pages
+    enabled: false
+    kind: company site
+  - id: we_work_remotely
+    enabled: false
+    kind: remote board
+  - id: remote_ok
+    enabled: false
+    kind: remote board
+  - id: remotive
+    enabled: false
+    kind: remote board
+  - id: working_nomads
+    enabled: false
+    kind: remote board
+  - id: indeed
+    enabled: true
+    kind: aggregator
+  - id: linkedin
+    enabled: true
+    kind: aggregator
+
+companies: []
+
+country: netherlands
+
+# Optional. When you leave this out, the run summary uses your computer's clock.
+# timezone: Europe/Amsterdam
+
+# Optional. Leave this out to keep every job that matches the title and place.
+# filters:
+#   job_types: [Full-time]
+#   levels: [Entry, Unknown]
+#   exclude_if_language_required: [German]
+
+results_per_search: 10
+posted_within_days: 30
+pause_seconds: 2
+fetch_descriptions: true
+snippet_characters: 280
+
+output:
+  directory: output
+  csv: jobs.csv
+  excel: jobs.xlsx
+  seen_file: data/seen_jobs.json

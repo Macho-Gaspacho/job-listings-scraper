@@ -1,5 +1,52 @@
 # Job listings scraper
 
+[![Tests](https://github.com/Macho-Gaspacho/job-listings-scraper/actions/workflows/tests.yml/badge.svg)](https://github.com/Macho-Gaspacho/job-listings-scraper/actions/workflows/tests.yml)
+[![Python 3.10 | 3.12 | 3.13](https://img.shields.io/badge/python-3.10%20%7C%203.12%20%7C%203.13-blue)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+A free job search for any profession, country, or level of experience.
+Answer a few questions (job title, city, country, remote) and get matching listings in one Excel file.
+No coding needed. The spreadsheet stays on your computer.
+
+## Screenshots
+
+These pictures are placeholders. Replace the files with captures from your own computer. Do not commit a spreadsheet that contains a real person's job search.
+
+![The spreadsheet of matching jobs](docs/img/spreadsheet.png)
+
+![The setup questions](docs/img/wizard.gif)
+
+To capture them:
+
+1. `docs/img/spreadsheet.png` — run a search, open `output/jobs.xlsx`, and take a screenshot of the Jobs sheet. Crop out anything you would not want public.
+2. `docs/img/wizard.gif` — run `python scrape.py --setup` and record the questions. A short GIF, or a still image, is enough. If you save a PNG instead, change the link above to that file name.
+
+## How it works
+
+```mermaid
+flowchart LR
+  wizard[Wizard] --> config[config.yaml]
+  config --> sources[Sources]
+  sources --> filter[Filter and dedupe]
+  filter --> files[Excel and CSV]
+```
+
+You answer the questions, or edit `config.yaml`. The program asks Indeed, LinkedIn, remote job boards, and any company career pages you listed. It keeps titles and places that match, drops duplicates, and writes `output/jobs.xlsx` and `output/jobs.csv`.
+
+## Legal and fair use
+
+This program is for your own job search.
+
+Indeed and LinkedIn's terms of service do not allow automated scraping. Use it for yourself, leave the pause between requests in place, and stop if a site tells you to. The program does not log in and does not try to get past a block. You are responsible for following each site's terms.
+
+Remote boards are read from their public feeds. When a result comes from Remote OK, credit Remote OK and link to [https://remoteok.com](https://remoteok.com). Their API asks for that attribution. The Excel file's About sheet includes the same credit.
+
+## Privacy
+
+A normal run keeps every file on your computer: the spreadsheet, the list of jobs already seen, and `config.yaml`. Nothing is uploaded.
+
+Do not commit `config.yaml`, `data/`, or `output/` to a public repository. Those files are your job search. Git already ignores them. An optional script can publish them, and it refuses to run unless you opt in. Read the warning in [examples/automation/daily_git_commit.py](examples/automation/daily_git_commit.py) before you consider it. Only use that script with a private repository.
+
 ## For beginners: 5 minutes, no coding
 
 This program searches public job sites and saves what it finds in a spreadsheet. You choose the job titles and the city by answering a few questions. You do not write any code.
@@ -79,6 +126,10 @@ Try a broader job title, or turn remote jobs on. Indeed and LinkedIn only return
 
 Those sites sometimes refuse a lot of requests. The program skips that one search and keeps the others. Wait a while, then run it again. Leave the pause between requests in place.
 
+**How do I run this every day?**
+
+See [docs/scheduling.md](docs/scheduling.md). That runs the same search on your computer. It does not upload your results.
+
 **How do I change the search later?**
 
 Double-clicking the start file runs the search you already saved. To change the titles or the city, open a terminal in the project folder and run:
@@ -99,7 +150,7 @@ You can also delete `config.yaml` and double-click the start file again. Saving 
 
 A configurable Python program that collects public job postings for any profession and any location. Roles, cities, companies, and sources are set in `config.yaml`. Edit that file, or run `python scrape.py --setup`. The search code stays as it is.
 
-A fresh copy of this repository has no `config.yaml`, so the first run asks the setup questions. `examples/berlin-software-engineer.yaml` is a software engineer search in Berlin and remote Germany. `examples/milan-product-manager.yaml` is a product and project search in Milan, with remote roles in Italy. Copy one to `config.yaml` to try it. See [examples/README.md](examples/README.md).
+A fresh copy of this repository has no `config.yaml`, so the first run asks the setup questions. Ready-made searches for different professions and countries are in `examples/`. Copy one to `config.yaml` to try it. See [examples/README.md](examples/README.md).
 
 It reads public career pages and job boards. It does not log in, and it does not try to get past a block. Results land in a CSV file and an Excel file. The same title at the same company is kept once, and each row is marked new or already seen.
 
@@ -107,7 +158,7 @@ It reads public career pages and job boards. It does not log in, and it does not
 python scrape.py
 ```
 
-A sample spreadsheet from one run of the Milan example is in `sample/`. That run saved 121 listings: 14 from company career pages, 15 from remote boards, and 92 from Indeed and LinkedIn.
+A made-up spreadsheet is in `sample/`. It was built by `tools/make_sample.py` from local fixtures, with no network and no real job search. Regenerate it with `python tools/make_sample.py`.
 
 ## Quick start for any job
 
@@ -139,32 +190,29 @@ locations:
 country: germany
 ```
 
-### Teacher or English Teacher in Milan or Remote
+### Nurse in Amsterdam, with Dutch titles
 
 ```yaml
 roles:
-  - Teacher
-  - English Teacher
+  - Nurse
 title_keywords:
-  Teacher:
-    - teacher
-    - insegnante
-  English Teacher:
-    - english teacher
-    - esl
-    - efl
-    - insegnante di inglese
+  Nurse:
+    - nurse
+    - registered nurse
+    - verpleegkundige
+    - verpleger
+    - verpleegster
 locations:
-  - name: Milan, Italy
-    indeed_location: Milan, Lombardy, Italy
-    linkedin_location: Milan, Lombardy, Italy
+  - name: Amsterdam, Netherlands
+    indeed_location: Amsterdam, Netherlands
+    linkedin_location: Amsterdam, Netherlands
     remote: false
-    distance_miles: 30
+    distance_miles: 25
   - name: Remote
-    indeed_location: Italy
-    linkedin_location: Italy
+    indeed_location: Netherlands
+    linkedin_location: Netherlands
     remote: true
-country: italy
+country: netherlands
 ```
 
 ### Nurse or Doctor in Italy
@@ -219,7 +267,7 @@ Sources are switched on or off in `config.yaml`. The spreadsheet column **Source
 
 | Source | Type | Why it is included |
 | --- | --- | --- |
-| Company career pages | company site | You apply on the company's own site, not in a crowded board inbox. The `companies` list is an example the author was tracking. Clear it, replace it, or turn this source off. |
+| Company career pages | company site | You apply on the company's own site, not in a crowded board inbox. The list is optional. Leave it empty, or add the employers you want. |
 | We Work Remotely | remote board | The public all-jobs feed, unless you list `categories` on that source. A posting is kept when it is open in your country or region. |
 | Remote OK | remote board | Public remote jobs, kept when they match your country or region. Listings from [Remote OK](https://remoteok.com) are included when they pass that filter. |
 | Indeed and LinkedIn | aggregator | These follow `roles` and `locations`. For most searches they are enough on their own. |
@@ -228,7 +276,7 @@ Remotive and Working Nomads are in the config and switched off. When they were t
 
 These were tried and left out, because they did not return a public job list: Wellfound, Welcome to the Jungle, Y Combinator Work at a Startup, Himalayas, InfoJobs Italia, startup.jobs, EU-Startups, SmartRecruiters, and Personio. Some of them answer with a bot check. This program does not try to get around that.
 
-The companies in `examples/milan-product-manager.yaml` are Bending Spoons, Satispay, Scalapay, Doctolib, Qonto, ElevenLabs, Synthesia, Hugging Face, Alan, and Mistral AI. PayFit and Pennylane are in the file as examples that are switched off.
+The example files leave `companies` empty and turn company career pages off. Add employers you want to read, or leave the list empty.
 
 ## Setup
 
@@ -246,7 +294,7 @@ After you clone the repository, run `python scrape.py --setup` or edit `config.y
 
 ## Usage
 
-A normal run writes the full spreadsheet and, on that computer only, the daily files. It does not commit anything.
+A normal run writes the full spreadsheet and, on that computer only, the daily files. It does not commit or upload anything.
 
 ```bash
 python scrape.py
@@ -260,29 +308,25 @@ python scrape.py --setup
 
 An existing `config.yaml` is copied to `config.backup.yaml` before it is replaced. `--setup` then offers to run the search.
 
-`--daily` does the same search, then commits three files so a later run can tell what is new:
+To run the search every day, follow [docs/scheduling.md](docs/scheduling.md). That uses `start.bat`, `start.command`, or cron. It does not publish your search.
+
+`python scrape.py` also writes three local files so the next run can tell what is new:
 
 - `data/seen_jobs.json` — listings already collected
 - `output/new_jobs.csv` — only the rows that are new (header only when nothing is new)
 - `output/last_run.json` — the time on your computer (or the `timezone` in config.yaml), totals, and a count per source
 
-```bash
-python scrape.py --daily
-```
+Those files stay on your computer. Git ignores them.
 
-`--daily` needs this folder to be a git repository with a remote. It commits those three files and pushes them. Use a normal run when you only want the spreadsheet on your computer.
+There is a separate script, [examples/automation/daily_git_commit.py](examples/automation/daily_git_commit.py), that can commit and push those three files. **Only use it with a private repo. It publishes your job search history.** It refuses to push unless `config.yaml` sets both `daily_git.enabled` and `daily_git.i_understand_this_is_public_if_repo_is_public` to `true`. It is not part of the normal command and not part of the beginner steps.
 
 The first run takes several minutes. It pauses between requests on purpose.
 
-```bash
-python -m pytest
-```
-
-The tests do not contact job sites.
+Developers: `pip install -r requirements-dev.txt`, then `ruff check .` and `pytest`. See [CONTRIBUTING.md](CONTRIBUTING.md). The tests do not contact job sites. Beginners can skip this. The start files install `requirements.txt` only.
 
 ## Configuration
 
-Edit `config.yaml` (create it with `python scrape.py --setup`, or copy a file from `examples/`). Lines starting with `#` are comments. `examples/berlin-software-engineer.yaml` and `examples/milan-product-manager.yaml` are two complete searches.
+Edit `config.yaml` (create it with `python scrape.py --setup`, or copy a file from `examples/`). Lines starting with `#` are comments. The files in `examples/` are complete searches for different jobs and countries. See [examples/README.md](examples/README.md).
 
 - `roles` — search phrases. Add or remove a line. Any job title works: engineer, teacher, nurse, analyst, or something else.
 - `title_keywords` — a posting is kept when its title contains one of these phrases. The keys should match `roles`. Set `require_title_match` to `false` to keep every result. If a role has no phrases, all of its results are kept.
@@ -291,7 +335,7 @@ Edit `config.yaml` (create it with `python scrape.py --setup`, or copy a file fr
 - `timezone` — optional. Used for the run summary. When omitted, the computer's own timezone is used. Example: `America/Chicago`.
 - `location_filter` — optional. `offices` are words that mean a workplace you can go to. `remote_regions` are places a remote job may be open to. `exclude_regions` are phrases that mean "not for me", such as `US only`. When this block is missing, offices come from your locations, and remote regions follow your country.
 - `sources` — set `enabled` to `false` to switch a source off. Leave `kind` as it is. Indeed and LinkedIn are enough for most searches. On `we_work_remotely`, an optional `categories` list (for example `product` or `design`) picks feeds. When omitted, the all-jobs feed is used.
-- `companies` — optional. The list in the Milan example is a set of employers, not a required part of the scraper. Clear it, replace it, or set `company_pages` to `enabled: false`. Each block is a name, a hiring system, and a public id from the careers address (`token`). The token is not a password.
+- `companies` — optional. Leave it empty, or add employers whose public careers page you want to read. Set `company_pages` to `enabled: false` to skip them. Each block is a name, a hiring system, and a public id from the careers address (`token`). The token is not a password.
 - `results_per_search` — how many Indeed and LinkedIn results to ask for. Company pages are not limited by this.
 - `posted_within_days` — skip older Indeed and LinkedIn jobs. Open company jobs are kept even when they are older.
 - `pause_seconds` — wait between requests. Leave a pause in place.
@@ -374,7 +418,9 @@ start.bat           The same flow on Windows.
 scrape.py           Command line. Runs the search and writes the files.
 setup_wizard.py     Questions that write config.yaml. Also: scrape.py --setup.
 environment.py      Plain messages for old Python, missing packages, and Mac SSL.
-examples/           Sample config files. Copy one to config.yaml to try it.
+examples/           Sample config files for different jobs and countries.
+examples/automation/daily_git_commit.py
+                    Optional. Commits and pushes the daily files. Refuses unless you opt in. Private repos only.
 config.yaml         Your search. Created by the wizard. Not included in a fresh download.
 config.py           Reads config.yaml and checks the settings.
 regions.py          Country names and the location rules built from your config.
@@ -383,10 +429,12 @@ boards.py           Company career pages and remote-board feeds.
 listings.py         Snippets, title filter, dedupe, and the new/seen flag.
 enrichment.py       Salary, job type, level, language, and visa.
 signals/            Word lists used to guess level, language, and visa from the text.
-save_results.py     CSV, Excel, the seen file, and the daily summary.
-daily.py            Commits the daily files when you pass --daily.
+save_results.py     CSV, Excel, the seen file, and the run summary.
+daily.py            Points at the optional private-repo script. It cannot push.
+docs/scheduling.md  How to run the search every day on your computer.
+tools/make_sample.py  Rebuilds the made-up spreadsheet in sample/.
 tests/              Checks that do not contact the job sites.
-sample/             Example spreadsheet from one real run.
+sample/             Made-up spreadsheet, so you can see the columns before you search.
 ```
 
 ## Limitations

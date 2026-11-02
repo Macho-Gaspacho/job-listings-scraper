@@ -578,7 +578,7 @@ def ask_job_types(io: IO) -> list[str]:
 def ask_hide_senior(io: IO) -> bool:
     io.say("")
     io.say("Hide senior roles?")
-    io.say("Titles such as senior, lead, principal, and head are left out. Other titles stay, including ones with no level.")
+    io.say("Titles such as senior, lead, principal, staff, and head are left out. Other titles stay, including ones with no level.")
     return io.yes_no("Hide senior roles?", default=False)
 
 

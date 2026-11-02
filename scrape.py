@@ -32,7 +32,6 @@ try:
     import setup_wizard
     from boards import collect_board_listings
     from config import Settings, load_config
-    from daily import commit_daily_files, push_daily_commit
     from environment import python_version_problem, report_skip
     from enrichment import filters_active, passes_filters
     from listings import (
@@ -144,13 +143,12 @@ def collect_listings(settings: Settings, fetch, pause=time.sleep) -> tuple[list[
     return dedupe(rows), failures
 
 
-def _run_search(config_path: Path, daily: bool, fetch=None, getter=None, verbose: bool = False) -> int:
+def _run_search(config_path: Path, fetch=None, getter=None, verbose: bool = False) -> int:
     """Load a saved config, search, and write the spreadsheet.
 
     fetch(role, place, site) and getter(url) stand in for the live sites in tests.
     """
     configure_logging(verbose)
-    project_dir = Path(__file__).resolve().parent
     try:
         settings = load_config(config_path)
     except (OSError, ValueError, yaml.YAMLError) as exc:
@@ -212,18 +210,6 @@ def _run_search(config_path: Path, daily: bool, fetch=None, getter=None, verbose
             "No listings came back. Try a broader role, add a company in "
             "config.yaml, or raise posted_within_days."
         )
-    if daily:
-        day = f"{run_at.day} {run_at.strftime('%B %Y')}"
-        message = (
-            f"Record the daily job search for {day}.\n\n"
-            f"{summary['new_listings']} new listings out of {summary['total_listings']}."
-        )
-        try:
-            commit_daily_files(project_dir, message)
-            push_daily_commit(project_dir)
-        except RuntimeError as exc:
-            print(exc)
-            return 1
     return 0
 
 
@@ -253,14 +239,6 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Show detailed messages from the job sites. Leave this off for a normal run.",
     )
-    parser.add_argument(
-        "--daily",
-        action="store_true",
-        help=(
-            "After the search, commit and push the seen-jobs memory, "
-            "the new-jobs sheet, and the run summary."
-        ),
-    )
     try:
         args = parser.parse_args(argv)
         config_path = Path(args.config)
@@ -269,9 +247,9 @@ def main(argv: list[str] | None = None) -> int:
                 print("There is no config.yaml yet. Answer a few questions and one will be created.")
             return setup_wizard.run_wizard(
                 config_path,
-                run_search=lambda path: _run_search(Path(path), daily=args.daily, verbose=args.verbose),
+                run_search=lambda path: _run_search(Path(path), verbose=args.verbose),
             )
-        return _run_search(config_path, daily=args.daily, verbose=args.verbose)
+        return _run_search(config_path, verbose=args.verbose)
     except KeyboardInterrupt:
         print("Stopped. Results collected so far were not saved.")
         return 130

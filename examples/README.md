@@ -11,12 +11,18 @@ cp examples/berlin-software-engineer.yaml config.yaml
 ```
 
 ```bash
-cp examples/milan-product-manager.yaml config.yaml
+cp examples/nurse-netherlands.yaml config.yaml
 ```
 
 Then run `python scrape.py`.
 
-- `berlin-software-engineer.yaml` — software engineer jobs in Berlin, and remote jobs in Germany. Indeed and LinkedIn only.
-- `milan-product-manager.yaml` — product and project jobs in Milan, remote jobs in Italy, plus an example list of companies.
+- `accountant-toronto-canada.yaml` — an accountant in Toronto. English and French titles.
+- `berlin-software-engineer.yaml` — a software engineer in Berlin, and remote jobs in Germany. Indeed and LinkedIn only.
+- `graduate-marketing-spain.yaml` — a first marketing job in Madrid. Senior titles are left out.
+- `nurse-netherlands.yaml` — a nurse in Amsterdam, and remote jobs in the Netherlands, including Dutch titles.
+- `remote-customer-support-worldwide.yaml` — remote customer support. Remote boards keep worldwide postings. Indeed and LinkedIn are asked for remote jobs in the United States, which you can change.
+- `warehouse-worker-poland.yaml` — a warehouse worker in Warsaw, including Polish titles.
 
-Both files show an optional `filters` block in comments. Salary, job type, level, language, and visa filters are off until you remove the `#`. A salary minimum keeps jobs that do not state a salary. Language and visa values are guessed from the posting text.
+The files show an optional `filters` block in comments, except the Madrid file, which turns the level filter on. Salary, job type, language, and visa filters are off until you remove the `#`. A salary minimum keeps jobs that do not state a salary. Language and visa values are guessed from the posting text.
+
+Company career pages are off in every example, and the company list is empty. Add your own employers if you want them. See the address table in [README.md](../README.md).

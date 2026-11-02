@@ -160,7 +160,7 @@ def test_offline_run_keeps_previous_results(tmp_path, capsys):
     config = _search_config(tmp_path, remote=True)
     files = _result_files(tmp_path)
 
-    code = _run_search(config, False, fetch=_offline, getter=_offline)
+    code = _run_search(config, fetch=_offline, getter=_offline)
 
     captured = capsys.readouterr()
     output_dir = tmp_path / "output"
@@ -183,7 +183,7 @@ def test_a_single_successful_source_still_saves(tmp_path, capsys):
     def fetch(_role, _place, _site):
         return [_row(title="Kept role", url="https://example.com/kept")]
 
-    code = _run_search(config, False, fetch=fetch, getter=_offline)
+    code = _run_search(config, fetch=fetch, getter=_offline)
 
     captured = capsys.readouterr()
     assert code == 0
