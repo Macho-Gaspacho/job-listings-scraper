@@ -12,9 +12,19 @@ from pathlib import Path
 
 import yaml
 
+from regions import (
+    INDEED_COUNTRIES,
+    LocationFilter,
+    LocationRules,
+    build_location_rules,
+    canonical_country,
+    country_from_places,
+    system_timezone_name,
+    validate_timezone,
+)
 
-# Sites python-jobspy knows how to ask. The default config only turns on
-# the ones that returned real Milan listings when this project was tested.
+
+# Sites python-jobspy knows how to ask. A config turns on the ones it wants.
 KNOWN_SITES = ("indeed", "linkedin", "google", "glassdoor", "zip_recruiter")
 
 # Every source a person can switch on or off in config.yaml.
@@ -46,7 +56,7 @@ KNOWN_SYSTEMS = (
 
 @dataclass
 class Place:
-    """One place to search, such as Milan or remote work in Italy."""
+    """One place to search, such as a city or remote work in a country."""
 
     name: str
     indeed_location: str
@@ -87,6 +97,9 @@ class Settings:
     company_pages_enabled: bool = False
     remote_boards: list[str] | None = None
     companies: list[Company] | None = None
+    timezone: str = ""
+    location_rules: LocationRules | None = None
+    wwr_categories: tuple[str, ...] | None = None
 
 
 def _text_list(values: object) -> list[str]:
@@ -166,6 +179,74 @@ def _load_companies(value: object) -> list[Company]:
     return companies
 
 
+def _optional_phrases(block: dict, key: str) -> tuple[str, ...] | None:
+    """None when the key was left out. An empty list is kept as empty."""
+    if key not in block:
+        return None
+    return tuple(_text_list(block.get(key)))
+
+
+def _load_location_filter(raw: dict) -> LocationFilter | None:
+    block = raw.get("location_filter")
+    if block is None:
+        return None
+    if not isinstance(block, dict):
+        raise ValueError(
+            "location_filter in config.yaml should be a group of lists: "
+            "offices, remote_regions, and exclude_regions."
+        )
+    return LocationFilter(
+        offices=_optional_phrases(block, "offices"),
+        remote_regions=_optional_phrases(block, "remote_regions"),
+        exclude_regions=_optional_phrases(block, "exclude_regions"),
+    )
+
+
+def _load_country(raw: dict, places: list[Place]) -> str:
+    """The Indeed country. Taken from the first office when the file leaves it out."""
+    provided = raw.get("country", None)
+    if provided is None or not str(provided).strip():
+        derived = country_from_places(places)
+        if not derived:
+            raise ValueError(
+                "config.yaml does not set country, and none of the locations names a country "
+                "this program recognises. Add a country Indeed accepts, such as germany, "
+                "or name a place like Berlin, Germany."
+            )
+        return derived
+    country = canonical_country(str(provided))
+    if country not in INDEED_COUNTRIES:
+        written = str(provided).strip()
+        raise ValueError(
+            f"Country '{written}' is not one this program can send to Indeed. "
+            "Use an English name such as Germany, Italy, United Kingdom, or United States."
+        )
+    return country
+
+
+def _load_timezone(raw: dict) -> str:
+    provided = raw.get("timezone", None)
+    if provided is None or not str(provided).strip():
+        return system_timezone_name()
+    return validate_timezone(str(provided))
+
+
+def _wwr_categories(raw: dict) -> tuple[str, ...] | None:
+    """Category names from the we_work_remotely source, or None to use the default feed."""
+    sources = raw.get("sources")
+    if not isinstance(sources, list):
+        return None
+    for entry in sources:
+        if not isinstance(entry, dict):
+            continue
+        if str(entry.get("id") or "").strip().lower() != "we_work_remotely":
+            continue
+        if "categories" not in entry:
+            return None
+        return tuple(_text_list(entry.get("categories")))
+    return None
+
+
 def load_config(path: str | Path) -> Settings:
     """Load settings. Paths in the file are relative to the file's folder."""
     config_path = Path(path)
@@ -222,6 +303,9 @@ def load_config(path: str | Path) -> Settings:
         str(role).strip(): _text_list(phrases) for role, phrases in raw_keywords.items()
     }
 
+    country = _load_country(raw, places)
+    location_filter = _load_location_filter(raw)
+
     output = raw.get("output") or {}
     if not isinstance(output, dict):
         raise ValueError("The 'output' section in config.yaml should be a group of names.")
@@ -230,7 +314,7 @@ def load_config(path: str | Path) -> Settings:
         roles=roles,
         places=places,
         sites=sites,
-        country=str(raw.get("country") or "italy").strip().lower(),
+        country=country,
         results_per_search=results,
         posted_within_days=days,
         pause_seconds=float(raw.get("pause_seconds") or 0),
@@ -245,4 +329,7 @@ def load_config(path: str | Path) -> Settings:
         company_pages_enabled=company_pages_enabled,
         remote_boards=remote_boards,
         companies=companies,
+        timezone=_load_timezone(raw),
+        location_rules=build_location_rules(places, country, location_filter),
+        wwr_categories=_wwr_categories(raw),
     )

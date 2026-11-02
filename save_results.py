@@ -76,7 +76,7 @@ def run_summary(rows: list[dict], run_at) -> dict:
             _bump(by_source, name, is_new)
     return {
         "run_at": run_at.isoformat(timespec="seconds"),
-        "timezone": "Europe/Rome",
+        "timezone": _timezone_label(run_at),
         "total_listings": len(rows),
         "new_listings": sum(1 for row in rows if row.get("is_new") == "yes"),
         "by_source": dict(sorted(by_source.items())),
@@ -100,14 +100,34 @@ def write_daily_files(rows: list[dict], new_csv_path: str | Path, last_run_path:
     return summary
 
 
-def write_outputs(rows: list[dict], csv_path: str | Path, excel_path: str | Path) -> None:
+def _timezone_label(run_at) -> str:
+    """The name of the clock used for this run."""
+    tz = getattr(run_at, "tzinfo", None)
+    if tz is None:
+        return ""
+    key = getattr(tz, "key", None)
+    if isinstance(key, str) and key:
+        return key
+    try:
+        name = run_at.tzname()
+    except Exception:
+        name = None
+    return name or ""
+
+
+def write_outputs(
+    rows: list[dict],
+    csv_path: str | Path,
+    excel_path: str | Path,
+    place_names: list[str] | None = None,
+) -> None:
     """Write both spreadsheets. CSV opens anywhere. Excel has filters and links."""
     csv_file = Path(csv_path)
     excel_file = Path(excel_path)
     csv_file.parent.mkdir(parents=True, exist_ok=True)
     excel_file.parent.mkdir(parents=True, exist_ok=True)
     _write_csv(rows, csv_file)
-    _write_excel(rows, excel_file)
+    _write_excel(rows, excel_file, place_names)
 
 
 def _write_csv(rows: list[dict], path: Path) -> None:
@@ -120,7 +140,19 @@ def _write_csv(rows: list[dict], path: Path) -> None:
             writer.writerow([row.get(key, "") for key, _ in OUTPUT_FIELDS])
 
 
-def _write_excel(rows: list[dict], path: Path) -> None:
+def _place_sentence(place_names: list[str] | None) -> str:
+    """Say which configured places can appear in the Place searched column."""
+    prefix = "Role searched is the phrase from config.yaml that found the posting. "
+    if not place_names:
+        return prefix + "Place searched is a location name from your config, or Remote."
+    if len(place_names) == 1:
+        shown = place_names[0]
+    else:
+        shown = ", ".join(place_names[:-1]) + " or " + place_names[-1]
+    return prefix + f"Place searched is {shown}."
+
+
+def _write_excel(rows: list[dict], path: Path, place_names: list[str] | None = None) -> None:
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "Jobs"
@@ -174,7 +206,7 @@ def _write_excel(rows: list[dict], path: Path) -> None:
         "New since last run is yes when that link was not in data/seen_jobs.json before this run.",
         "On a first run, every row says yes. Later runs say yes only for postings that were not saved before.",
         "Use the dropdown arrows in the header row to filter. Choose yes to see only the new listings.",
-        "Role searched is the phrase from config.yaml that found the posting. Place searched is Milan or Remote.",
+        _place_sentence(place_names),
         "Description is a short snippet, not the full advert. Open the URL for the full posting.",
         "Source type is company site, remote board, or aggregator. Sort or filter that column to see the less crowded sources first. Company site means the company's own careers page.",
         "The same title at the same company is kept once. The company site link is kept when a job board lists it too.",

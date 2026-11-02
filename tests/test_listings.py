@@ -2,17 +2,22 @@
 
 from datetime import date
 
+import pytest
+
+from config import Place
 from listings import (
     apply_new_flags,
     classify_place,
     company_name_key,
     dedupe,
+    excluded_region,
     listing_key,
     row_from_hit,
     snippet,
     sort_rows,
     title_is_relevant,
 )
+from regions import build_location_rules, canonical_country
 
 
 def test_snippet_strips_html_and_collapses_whitespace():
@@ -184,25 +189,121 @@ def test_same_title_and_company_is_not_new_if_another_link_was_saved():
     assert flagged[0]["source_type"] == "company site"
 
 
-def test_classify_place_keeps_milan_and_eu_remote_only():
-    assert classify_place("Milano, Milan, Italy") == "Milan, Italy"
-    assert classify_place("Paris", is_remote=False) is None
-    assert classify_place("Paris", is_remote=True) == "Remote"
-    assert classify_place("United States", is_remote=True) is None
-    assert classify_place("United Kingdom", is_remote=True) is None
-    assert classify_place("Anywhere in the World", is_remote=True) == "Remote"
-    assert classify_place("Melbourne", is_remote=True) is None
-    assert classify_place("Remote") == "Remote"
-    assert classify_place("Europe, USA", is_remote=True) == "Remote"
-    assert classify_place("London", is_remote=True) is None
-    assert classify_place("Finland", is_remote=True) == "Remote"
-    assert (
-        classify_place(
-            "Remote; United States; Poland; United Kingdom; Netherlands",
-            is_remote=True,
+def _rules(country, places):
+    built = [
+        Place(
+            name=name,
+            indeed_location=indeed,
+            linkedin_location=indeed,
+            remote=remote,
         )
-        == "Remote"
-    )
+        for name, indeed, remote in places
+    ]
+    return build_location_rules(built, canonical_country(country), None)
+
+
+_PROFILES = {
+    "milan": (
+        "italy",
+        [
+            ("Milan, Italy", "Milan, Lombardy, Italy", False),
+            ("Remote", "Italy", True),
+        ],
+    ),
+    "berlin": (
+        "germany",
+        [
+            ("Berlin, Germany", "Berlin, Germany", False),
+            ("Remote", "Germany", True),
+        ],
+    ),
+    "austin": (
+        "usa",
+        [
+            ("Austin, United States", "Austin, TX", False),
+            ("Remote", "United States", True),
+        ],
+    ),
+    "london": (
+        "uk",
+        [
+            ("London, UK", "London, United Kingdom", False),
+            ("Remote", "United Kingdom", True),
+        ],
+    ),
+    "toronto": (
+        "canada",
+        [
+            ("Toronto, Canada", "Toronto, ON", False),
+            ("Remote", "Canada", True),
+        ],
+    ),
+    "remote": ("germany", [("Remote", "Germany", True)]),
+}
+
+
+@pytest.mark.parametrize(
+    ("user", "location", "is_remote", "expected"),
+    [
+        ("milan", "Milan, Italy", False, "Milan, Italy"),
+        ("milan", "Milano, Milan, Italy", False, "Milan, Italy"),
+        ("milan", "Paris", False, None),
+        ("milan", "Paris", True, None),
+        ("milan", "Remote - Italy", True, "Remote"),
+        ("milan", "Remote - US only", True, None),
+        ("milan", "Anywhere in the World", True, "Remote"),
+        ("milan", "United States", True, None),
+        ("milan", "London", True, None),
+        ("milan", "Remote", False, "Remote"),
+        ("milan", "Europe, USA", True, "Remote"),
+        ("milan", "Finland", True, None),
+        ("milan", "", True, "Remote"),
+        ("berlin", "Berlin, Germany", False, "Berlin, Germany"),
+        ("berlin", "Milan, Italy", False, None),
+        ("berlin", "Remote - Germany", True, "Remote"),
+        ("berlin", "Remote - US only", True, None),
+        ("berlin", "Remote (EU only)", True, "Remote"),
+        ("austin", "Austin, TX", False, "Austin, United States"),
+        ("austin", "New York, NY", False, None),
+        ("austin", "Remote - USA", True, "Remote"),
+        ("austin", "Remote (EU only)", True, None),
+        ("austin", "Remote - US only", True, "Remote"),
+        ("london", "London, UK", False, "London, UK"),
+        ("london", "Berlin, Germany", False, None),
+        ("toronto", "Toronto, Canada", False, "Toronto, Canada"),
+        ("toronto", "Vancouver, BC", False, None),
+        ("remote", "Berlin, Germany", False, None),
+        ("remote", "Remote - Germany", True, "Remote"),
+        ("remote", "Remote - US only", True, None),
+        ("remote", "", True, "Remote"),
+    ],
+)
+def test_classify_place_follows_the_configured_places(user, location, is_remote, expected):
+    rules = _rules(*_PROFILES[user])
+    assert classify_place(location, is_remote, rules) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "excluded"),
+    [
+        ("Bonus only for top performers", False),
+        ("remote user research", False),
+        ("Remote - US only", True),
+        ("Headquarters: Remote, US", True),
+        ("based in the united states only", True),
+        ("Remote - Germany", False),
+        ("Remote (EU only)", False),
+    ],
+)
+def test_excluded_region_uses_whole_phrases_for_a_germany_search(text, excluded):
+    rules = _rules(*_PROFILES["berlin"])
+    assert excluded_region(text, rules) is excluded
+
+
+def test_excluded_region_keeps_the_users_own_country_limit():
+    austin = _rules(*_PROFILES["austin"])
+    assert excluded_region("Remote - US only", austin) is False
+    assert excluded_region("Remote (EU only)", austin) is True
 
 
 def test_dedupe_keeps_different_jobs_at_the_same_company():

@@ -21,27 +21,25 @@ from html import unescape
 
 from config import Company, Settings
 from environment import certificate_hint
+from regions import build_location_rules
 from listings import (
-    blocks_europe,
     classify_place,
     clean_text,
     date_text,
+    excluded_region,
     roles_for_title,
     snippet,
 )
 
-USER_AGENT = "milan-job-scraper/1.0 (personal job search; public feeds only)"
-
-# Remote-board feeds. Product and marketing are the categories that
-# overlap the roles in config.yaml. The full "all jobs" feed is much noisier.
-# The old "remote-marketing-jobs" address now answers with a redirect and
-# no new address, so the sales-and-marketing feed is used instead.
-# Management is included because project-manager roles are posted there.
-WE_WORK_REMOTELY_FEEDS = (
-    "https://weworkremotely.com/categories/remote-product-jobs.rss",
-    "https://weworkremotely.com/categories/remote-sales-and-marketing-jobs.rss",
-    "https://weworkremotely.com/categories/remote-management-and-finance-jobs.rss",
+VERSION = "1.0"
+USER_AGENT = (
+    f"job-listings-scraper/{VERSION} "
+    "(+https://github.com/Macho-Gaspacho/job-listings-scraper)"
 )
+
+# The public all-jobs feed. Checked once: it returns RSS (HTTP 200).
+# A config can list categories instead. See we_work_remotely_feed_urls.
+DEFAULT_WWR_FEED = "https://weworkremotely.com/remote-jobs.rss"
 
 
 def http_get(url: str) -> bytes:
@@ -84,17 +82,52 @@ def _json_bytes(body: bytes):
         raise RuntimeError("the site did not return readable JSON") from exc
 
 
+def _location_rules(settings: Settings):
+    """Rules saved with the config, or rules built from its places and country."""
+    rules = settings.location_rules
+    if rules is not None:
+        return rules
+    return build_location_rules(settings.places, settings.country, None)
+
+
+def we_work_remotely_feed_urls(categories: tuple[str, ...] | list[str] | None) -> tuple[str, ...]:
+    """Feed addresses for We Work Remotely. No categories means the all-jobs feed."""
+    if not categories:
+        return (DEFAULT_WWR_FEED,)
+    return tuple(_wwr_category_url(category) for category in categories)
+
+
+def _wwr_category_url(category: str) -> str:
+    text = str(category).strip()
+    if text.startswith("http://") or text.startswith("https://"):
+        return text
+    slug = text.strip().strip("/")
+    if slug.endswith(".rss"):
+        slug = slug[:-4]
+    if slug.startswith("categories/"):
+        slug = slug.split("/", 1)[1]
+    if slug in {"all", "remote-jobs", "jobs"}:
+        return DEFAULT_WWR_FEED
+    if not slug.startswith("remote-"):
+        if slug.endswith("-jobs"):
+            slug = "remote-" + slug
+        else:
+            slug = f"remote-{slug}-jobs"
+    return f"https://weworkremotely.com/categories/{slug}.rss"
+
+
 def filter_board_jobs(
     jobs: list[dict],
     settings: Settings,
     source_type: str,
     check_region_text: bool = False,
 ) -> list[dict]:
-    """Keep jobs whose title matches a role and whose location is Milan or EU-remote."""
+    """Keep jobs whose title matches a role and whose place matches the user's rules."""
+    rules = _location_rules(settings)
     kept = []
     for job in jobs:
         description = job.get("description") or ""
-        if check_region_text and blocks_europe(description):
+        if check_region_text and excluded_region(description, rules):
             continue
         roles = roles_for_title(
             job.get("title") or "",
@@ -104,23 +137,26 @@ def filter_board_jobs(
         )
         if not roles:
             continue
-        place = classify_place(job.get("location") or "", bool(job.get("is_remote")))
+        location = job.get("location") or ""
+        is_remote = bool(job.get("is_remote"))
+        place = classify_place(location, is_remote, rules)
         if not place:
             continue
-        kept.append(
-            {
-                "title": clean_text(job.get("title")),
-                "company": clean_text(job.get("company")),
-                "location": clean_text(job.get("location")),
-                "date_posted": _iso_date(job.get("date_posted")),
-                "source": clean_text(job.get("source")),
-                "source_type": source_type,
-                "url": clean_text(job.get("url")),
-                "description": snippet(description, settings.snippet_characters),
-                "role_searched": "; ".join(roles),
-                "place_searched": place,
-            }
-        )
+        row = {
+            "title": clean_text(job.get("title")),
+            "company": clean_text(job.get("company")),
+            "location": clean_text(location),
+            "date_posted": _iso_date(job.get("date_posted")),
+            "source": clean_text(job.get("source")),
+            "source_type": source_type,
+            "url": clean_text(job.get("url")),
+            "description": snippet(description, settings.snippet_characters),
+            "role_searched": "; ".join(roles),
+            "place_searched": place,
+        }
+        if place == "Remote" and not row["location"] and is_remote:
+            row["remote_scope"] = "unspecified"
+        kept.append(row)
     return kept
 
 
@@ -166,7 +202,7 @@ def parse_lever(payload: list, company: str) -> list[dict]:
 
 
 def parse_ashby(payload: dict, company: str) -> list[dict]:
-    """Ashby's public posting API. Hybrid office jobs outside Milan are dropped later."""
+    """Ashby's public posting API. Office jobs outside the configured places are dropped later."""
     rows = []
     for job in payload.get("jobs") or []:
         if job.get("isListed") is False:
@@ -257,20 +293,21 @@ def parse_bending_spoons(page_html: str) -> list[dict]:
     for job in jobs:
         offices = job.get("officeLocations") or []
         labels = []
-        milan = False
-        eu_office = False
+        listed_in_eu = False
         for office in offices:
             title = office.get("title") or ""
             country = office.get("country") or {}
+            if not isinstance(country, dict):
+                country = {}
             labels.append(title or country.get("name") or "")
-            blob = f"{title} {country.get('name') or ''}".lower()
-            if "milan" in blob or "milano" in blob:
-                milan = True
             if country.get("euMember"):
-                eu_office = True
+                listed_in_eu = True
+        # The same location rules used everywhere else decide if this office,
+        # or a remote role open in the EU, is one the user asked for.
+        is_remote = bool(job.get("availableAsRemoteInDefaultCountries"))
+        if is_remote and listed_in_eu:
+            labels.append("EU")
         location = "; ".join(label for label in labels if label)
-        # Remote only matters when the job is not already in the Milan office.
-        is_remote = bool(job.get("availableAsRemoteInDefaultCountries")) and eu_office and not milan
         job_id = job.get("id") or ""
         rows.append(
             {
@@ -444,11 +481,12 @@ def _company_jobs(company: Company, getter) -> list[dict]:
     raise RuntimeError(f"unknown job system '{system}'")
 
 
-def _remote_jobs(source_id: str, getter) -> list[dict]:
+def _remote_jobs(source_id: str, getter, settings: Settings) -> list[dict]:
     if source_id == "we_work_remotely":
         rows = []
         errors = []
-        for index, url in enumerate(WE_WORK_REMOTELY_FEEDS):
+        feeds = we_work_remotely_feed_urls(getattr(settings, "wwr_categories", None))
+        for index, url in enumerate(feeds):
             if index:
                 time.sleep(1)
             try:
@@ -516,7 +554,7 @@ def collect_board_listings(settings: Settings, pause=time.sleep, getter=http_get
             print(f"Reading remote board {source_id.replace('_', ' ')}...", flush=True)
             try:
                 found = filter_board_jobs(
-                    _remote_jobs(source_id, getter),
+                    _remote_jobs(source_id, getter, settings),
                     settings,
                     "remote board",
                     check_region_text=True,

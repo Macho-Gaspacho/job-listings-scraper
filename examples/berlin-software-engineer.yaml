@@ -1,10 +1,9 @@
 # ============================================================
-# Neutral example: Software Engineer in Berlin + remote Germany.
-# Copy the pieces you need into config.yaml, or run:
-#     python scrape.py --config config.example.yaml
-# The checked-in config.yaml is a separate working example
-# (Milan + product/project roles). You do not need to edit
-# any Python files.
+# Example: Software Engineer in Berlin, and remote jobs in Germany.
+# To try this search, copy the file and run the scraper:
+#     cp examples/berlin-software-engineer.yaml config.yaml
+#     python scrape.py
+# You do not need to edit any Python files.
 # ============================================================
 
 roles:
@@ -31,9 +30,11 @@ locations:
     remote: true
 
 # Indeed and LinkedIn are enough for most searches.
-# company_pages and the remote boards are off here. Company pages and
-# remote boards still keep Milan offices, or remote roles open to Italy,
-# the EU, or worldwide, so they are a poor fit for a Berlin office search.
+# Company pages and the remote boards are off in this example.
+# Turn them on if you want them: they follow the Berlin and Germany
+# places above, not a city baked into the program.
+# On we_work_remotely, an optional "categories" list (product, design, ...)
+# picks feeds. Leave it out to read the all-jobs feed.
 sources:
   - id: company_pages
     enabled: false
@@ -62,6 +63,9 @@ sources:
 companies: []
 
 country: germany
+
+# Optional. When you leave this out, the run summary uses your computer's clock.
+# timezone: Europe/Berlin
 
 results_per_search: 10
 posted_within_days: 30

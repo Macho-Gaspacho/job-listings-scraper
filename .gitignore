@@ -14,3 +14,7 @@ venv/
 # Run output and the memory of listings already seen
 data/
 output/
+
+# Your own search. The first run writes this. Examples live in examples/.
+config.yaml
+config.backup.yaml

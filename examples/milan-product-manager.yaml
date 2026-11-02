@@ -1,11 +1,12 @@
 # ============================================================
-# This file is a working example (Milan + product/project roles).
-# To use the scraper for any other profession or location:
-#   1. Replace the roles list
-#   2. Update title_keywords (or set require_title_match: false)
-#   3. Change locations and country
-#   4. Optionally clear or replace the companies list
-# You do not need to edit any Python files.
+# Example: product and project roles in Milan, plus remote roles in Italy.
+# A fresh download has no config.yaml. The first run asks questions and
+# writes one. To try this example instead:
+#     cp examples/milan-product-manager.yaml config.yaml
+#     python scrape.py
+# For a different search, change the lists below. You do not need to edit
+# any Python files. Another ready-made file is
+# examples/berlin-software-engineer.yaml.
 # ============================================================
 
 # Job search settings
@@ -14,7 +15,7 @@
 #     python scrape.py
 # You do not need to edit any Python file for a normal search.
 # See README.md for full examples (Berlin, Paris, teaching, healthcare).
-# config.example.yaml is the same kind of file for a software engineer
+# examples/berlin-software-engineer.yaml is a software engineer search
 # in Berlin and remote Germany.
 
 # Phrases to search for. Add a line, or delete one, to change the search.
@@ -79,10 +80,10 @@ title_keywords:
 # strict remote-only switch).
 # distance_miles is the search radius. 30 miles is about 50 km.
 # Job sites measure this in miles, which is why the setting says miles.
-# Company career pages and remote boards are filtered separately: Milan
-# offices, or remote roles you can do from Italy or the EU.
-# Indeed and LinkedIn follow the blocks below. The Milan search is the
-# author's example. Replace it, and set country further down to match.
+# Company career pages and remote boards follow these places too.
+# An office is kept when the city matches a block below. A remote role is
+# kept when it is open in your country, or in location_filter when you set one.
+# This file is one example. Replace the blocks, and set country to match.
 locations:
   - name: Milan, Italy
     indeed_location: Milan, Lombardy, Italy
@@ -121,6 +122,32 @@ locations:
   #   linkedin_location: Italy
   #   remote: false
 
+# Optional. Delete this block and the program builds it from the locations
+# above and from country: city words, plus the country name, its native name,
+# Worldwide, Anywhere, and Global. Europe, EU, and EMEA are added only when
+# the country is in the EU or the EEA.
+# offices — words that mean a workplace you can go to, including another spelling.
+# remote_regions — a remote advert is kept when it names one of these.
+# exclude_regions — extra phrases that mean "not for me", such as "US only".
+location_filter:
+  offices:
+    - Milan
+    - Milano
+    - Lombardy
+    - Lombardia
+    - Italy
+    - Italia
+  remote_regions:
+    - Italy
+    - Italia
+    - Europe
+    - EU
+    - EMEA
+    - Worldwide
+    - Anywhere
+    - Global
+  exclude_regions: []
+
 # Each source can be turned off by changing enabled to false.
 # kind is the "Source type" column in the spreadsheet. Leave kind as it is.
 #
@@ -147,6 +174,12 @@ sources:
   - id: we_work_remotely
     enabled: true
     kind: remote board
+    # Optional. These three feeds match the roles above.
+    # Delete "categories" to read every remote job instead.
+    categories:
+      - product
+      - sales-and-marketing
+      - management-and-finance
   - id: remote_ok
     enabled: true
     kind: remote board
@@ -240,8 +273,12 @@ companies:
     enabled: false
 
 # Country passed to Indeed. Examples: italy, france, germany, spain,
-# netherlands, uk, usa. If you change the city, change this too.
+# netherlands, uk, usa. If you leave it out, it is taken from the first
+# office above. If you change the city, change this too.
 country: italy
+
+# Optional. When you leave this out, the run summary uses your computer's clock.
+# timezone: Europe/Rome
 
 # How many listings to request per role, per place, per site.
 # This applies to Indeed and LinkedIn only. Company pages and remote

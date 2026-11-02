@@ -47,7 +47,7 @@ def build_search(settings: Settings, role: str, place: Place, site: str) -> dict
 def take_records(frame, site: str) -> list[dict]:
     """Pull rows out of a python-jobspy table.
 
-    A site can fail while returning nothing (Glassdoor did this for Milan
+    A site can fail while returning nothing (Glassdoor did this for one city
     during testing). That becomes an error the caller can skip. A warning
     that still came with rows is printed, and the rows are kept.
     """

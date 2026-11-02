@@ -14,6 +14,7 @@ from pathlib import Path
 import yaml
 
 from config import KNOWN_SYSTEMS
+from regions import COUNTRY_ALIASES, INDEED_COUNTRIES, canonical_country
 
 
 HEADER = """# Created by the setup wizard.
@@ -22,103 +23,11 @@ HEADER = """# Created by the setup wizard.
 
 """
 
-# Country names Indeed accepts. Kept here so the wizard can check an answer
-# without importing the job-board library.
-INDEED_COUNTRIES = {
-    "argentina",
-    "australia",
-    "austria",
-    "bahrain",
-    "belgium",
-    "brazil",
-    "canada",
-    "chile",
-    "china",
-    "colombia",
-    "costa rica",
-    "czech republic",
-    "denmark",
-    "ecuador",
-    "egypt",
-    "finland",
-    "france",
-    "germany",
-    "greece",
-    "hong kong",
-    "hungary",
-    "india",
-    "indonesia",
-    "ireland",
-    "israel",
-    "italy",
-    "japan",
-    "kuwait",
-    "luxembourg",
-    "malaysia",
-    "mexico",
-    "morocco",
-    "netherlands",
-    "new zealand",
-    "nigeria",
-    "norway",
-    "oman",
-    "pakistan",
-    "panama",
-    "peru",
-    "philippines",
-    "poland",
-    "portugal",
-    "qatar",
-    "romania",
-    "saudi arabia",
-    "singapore",
-    "south africa",
-    "south korea",
-    "spain",
-    "sweden",
-    "switzerland",
-    "taiwan",
-    "thailand",
-    "türkiye",
-    "ukraine",
-    "united arab emirates",
-    "uk",
-    "usa",
-    "uruguay",
-    "venezuela",
-    "vietnam",
-}
-
-COUNTRY_ALIASES = {
-    "czechia": "czech republic",
-    "turkey": "türkiye",
-    "uae": "united arab emirates",
-    "united kingdom": "uk",
-    "u.k.": "uk",
-    "great britain": "uk",
-    "britain": "uk",
-    "england": "uk",
-    "scotland": "uk",
-    "wales": "uk",
-    "us": "usa",
-    "u.s.": "usa",
-    "u.s.a.": "usa",
-    "united states": "usa",
-    "united states of america": "usa",
-    "america": "usa",
-    "italia": "italy",
-    "deutschland": "germany",
-    "espana": "spain",
-    "españa": "spain",
-    "holland": "netherlands",
-    "the netherlands": "netherlands",
-}
-
 SOURCE_NOTES = (
     "  1. Indeed — a large job board. A good default for most cities.",
     "  2. LinkedIn — public job posts. A long run can be slow, and LinkedIn sometimes blocks it.",
     "  3. Remote boards — We Work Remotely and Remote OK. Useful for remote jobs.",
-    "     These boards still keep Milan offices or remote roles open in Europe.",
+    "     Remote boards follow the cities and countries you just chose.",
     "  4. Company career pages — employers you name next. You apply on the company's own site.",
 )
 
@@ -178,10 +87,11 @@ def split_csv(raw: str) -> list[str]:
 
 
 def country_code(name: str) -> str | None:
-    text = " ".join(name.strip().lower().split())
-    text = COUNTRY_ALIASES.get(text, text)
-    if text in INDEED_COUNTRIES:
-        return text
+    """An Indeed country code, or None when the name is not on Indeed's list."""
+    direct = COUNTRY_ALIASES.get(" ".join(name.strip().lower().split()))
+    code = direct or canonical_country(name)
+    if code in INDEED_COUNTRIES:
+        return code
     return None
 
 

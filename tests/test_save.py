@@ -59,6 +59,27 @@ def test_write_outputs_creates_csv_and_excel_with_friendly_headers(tmp_path):
     assert sheet.auto_filter.ref is not None
     assert sheet.freeze_panes == "A2"
     assert "how to read" in workbook["About this file"]["A1"].value.lower()
+    about = " ".join(
+        str(cell.value)
+        for row in workbook["About this file"].iter_rows()
+        for cell in row
+        if cell.value
+    )
+    assert "Milan" not in about
+    assert "location name from your config" in about
+
+
+def test_about_sheet_names_the_configured_places(tmp_path):
+    excel_path = tmp_path / "jobs.xlsx"
+    write_outputs([], tmp_path / "jobs.csv", excel_path, place_names=["Berlin, Germany", "Remote"])
+    workbook = load_workbook(excel_path)
+    about = " ".join(
+        str(cell.value)
+        for row in workbook["About this file"].iter_rows()
+        for cell in row
+        if cell.value
+    )
+    assert "Place searched is Berlin, Germany or Remote." in about
 
 
 def test_write_daily_files_keeps_only_new_rows_and_counts_each_source(tmp_path):

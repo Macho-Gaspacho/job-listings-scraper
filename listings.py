@@ -8,6 +8,25 @@ from __future__ import annotations
 
 import re
 
+from regions import classify_place, excluded_region
+
+__all__ = [
+    "OUTPUT_FIELDS",
+    "apply_new_flags",
+    "classify_place",
+    "clean_text",
+    "company_name_key",
+    "dedupe",
+    "excluded_region",
+    "identity_keys",
+    "listing_key",
+    "roles_for_title",
+    "row_from_hit",
+    "snippet",
+    "sort_rows",
+    "title_is_relevant",
+]
+
 
 # The spreadsheet columns, in order. The first name is the key used in code.
 # The second name is the heading a person sees in Excel.
@@ -279,135 +298,6 @@ def roles_for_title(title: str, roles: list[str], keywords: dict[str, list[str]]
         elif title_is_relevant(title, phrases):
             matched.append(role)
     return matched
-
-
-# Cities and countries a student in Milan can realistically work from,
-# either in the office or remotely.
-_MILAN_WORDS = ("milan", "milano", "lombardy", "lombardia")
-_EU_WORDS = (
-    "italy",
-    "italia",
-    "france",
-    "germany",
-    "spain",
-    "netherlands",
-    "portugal",
-    "belgium",
-    "austria",
-    "ireland",
-    "sweden",
-    "denmark",
-    "poland",
-    "finland",
-    "greece",
-    "luxembourg",
-    "switzerland",
-    "norway",
-    "europe",
-    "european",
-    "emea",
-    "worldwide",
-    "anywhere",
-    "global",
-    "paris",
-    "berlin",
-    "amsterdam",
-    "barcelona",
-    "madrid",
-    "lisbon",
-    "dublin",
-    "vienna",
-    "munich",
-    "rome",
-    "roma",
-    "brussels",
-    "stockholm",
-    "copenhagen",
-    "warsaw",
-    "prague",
-    "zurich",
-    "lyon",
-    "bologna",
-    "turin",
-    "torino",
-)
-_BLOCK_WORDS = (
-    "united states",
-    "u.s.",
-    "usa",
-    "canada",
-    "india",
-    "australia",
-    "brazil",
-    "singapore",
-    "japan",
-    "korea",
-    "mexico",
-    "philippines",
-    "argentina",
-    "latam",
-    "latin america",
-    "melbourne",
-    "united kingdom",
-    "london",
-)
-
-
-def classify_place(location: str, is_remote: bool = False) -> str | None:
-    """Return 'Milan, Italy', 'Remote', or None when the job is somewhere else.
-
-    Milan office jobs are kept. Remote jobs are kept when they can be done
-    from Italy or the EU, or when they say worldwide. US-only, UK-only, and
-    other non-EU offices are left out.
-    """
-    text = _words(location)
-    if any(word in text for word in _MILAN_WORDS):
-        return "Milan, Italy"
-    remoteish = is_remote or any(
-        word in text for word in ("remote", "anywhere", "worldwide", "work from home", "da remoto", "lavoro da casa")
-    )
-    if not remoteish:
-        return None
-    if re.search(r"\b(us|usa|u\.s\.|united states|canada|uk|united kingdom)\s+only\b", text):
-        return None
-    # Match whole words so "finland" is not treated as "india".
-    def mentioned(phrase: str) -> bool:
-        return re.search(rf"(?<![a-z0-9]){re.escape(phrase)}(?![a-z0-9])", text) is not None
-
-    eu_places = [word for word in _EU_WORDS if mentioned(word)]
-    open_region = any(mentioned(word) for word in ("europe", "european", "emea", "worldwide", "anywhere", "global"))
-    generic = text.strip() in {"remote", "global", "worldwide", "anywhere"} or (is_remote and not text)
-    has_block = any(mentioned(word) for word in _BLOCK_WORDS) or bool(re.search(r"(?<![a-z0-9])us(?![a-z0-9])", text))
-    # A role listed in Poland and the United States is still open in Europe.
-    # A role listed only in the US, the UK, or London is not.
-    if eu_places or open_region or generic:
-        if has_block and not eu_places and not open_region:
-            return None
-        return "Remote"
-    if has_block:
-        return None
-    return None
-
-
-def blocks_europe(text: str) -> bool:
-    """True when the advert says the person must be outside Europe."""
-    lowered = _words(text)
-    phrases = (
-        "united states only",
-        "us only",
-        "usa only",
-        "u s only",
-        "must be located in the united states",
-        "must be based in the united states",
-        "must reside in the united states",
-        "us residents only",
-        "north america only",
-        "remote us",
-        "remote, us",
-        "uk only",
-        "united kingdom only",
-    )
-    return any(phrase in lowered for phrase in phrases)
 
 
 def title_is_relevant(title: str, phrases: list[str]) -> bool:

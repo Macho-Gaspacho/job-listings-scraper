@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from boards import filter_board_jobs
 from config import load_config
 
 
@@ -129,3 +130,232 @@ def test_load_config_rejects_an_unknown_site(tmp_path):
     path.write_text(text, encoding="utf-8")
     with pytest.raises(ValueError, match="not-a-site"):
         load_config(path)
+
+
+def _places_config(tmp_path, body: str):
+    path = tmp_path / "config.yaml"
+    path.write_text(body, encoding="utf-8")
+    return path
+
+
+def test_country_is_derived_from_the_first_office(tmp_path):
+    path = _places_config(
+        tmp_path,
+        """
+roles: [Software Engineer]
+locations:
+  - name: Berlin, Germany
+    indeed_location: Berlin, Germany
+    linkedin_location: Berlin, Germany
+  - name: Remote
+    indeed_location: Germany
+    linkedin_location: Germany
+    remote: true
+sources:
+  - id: indeed
+    enabled: true
+    kind: aggregator
+""",
+    )
+    settings = load_config(path)
+    assert settings.country == "germany"
+    assert settings.location_rules.remote_regions[0] == "Germany"
+    assert "Europe" in settings.location_rules.remote_regions
+
+
+def test_country_aliases_are_accepted(tmp_path):
+    path = _places_config(
+        tmp_path,
+        """
+roles: [Designer]
+locations:
+  - name: Austin, United States
+    indeed_location: Austin, TX
+    linkedin_location: Austin, TX
+sources:
+  - id: indeed
+    enabled: true
+    kind: aggregator
+country: United States
+""",
+    )
+    assert load_config(path).country == "usa"
+
+
+def test_missing_country_without_a_recognisable_place_raises(tmp_path):
+    path = _places_config(
+        tmp_path,
+        """
+roles: [Designer]
+locations:
+  - name: Remote
+    indeed_location: Worldwide
+    linkedin_location: Worldwide
+    remote: true
+sources:
+  - id: indeed
+    enabled: true
+    kind: aggregator
+""",
+    )
+    with pytest.raises(ValueError, match="does not set country"):
+        load_config(path)
+
+
+def test_unknown_country_raises_a_plain_message(tmp_path):
+    path = _places_config(
+        tmp_path,
+        """
+roles: [Designer]
+locations:
+  - name: Berlin, Germany
+    indeed_location: Berlin, Germany
+    linkedin_location: Berlin, Germany
+sources:
+  - id: indeed
+    enabled: true
+    kind: aggregator
+country: narnia
+""",
+    )
+    with pytest.raises(ValueError, match="narnia"):
+        load_config(path)
+
+
+def test_timezone_defaults_to_the_computer_zone(tmp_path):
+    from regions import system_timezone_name
+
+    path = _places_config(
+        tmp_path,
+        """
+roles: [Designer]
+locations:
+  - name: Toronto, Canada
+    indeed_location: Toronto, ON
+    linkedin_location: Toronto, ON
+sources:
+  - id: indeed
+    enabled: true
+    kind: aggregator
+""",
+    )
+    settings = load_config(path)
+    assert settings.country == "canada"
+    assert settings.timezone == system_timezone_name()
+
+
+def test_timezone_can_be_set_and_rejects_a_fake_name(tmp_path):
+    path = _places_config(
+        tmp_path,
+        """
+roles: [Designer]
+locations:
+  - name: Austin, United States
+    indeed_location: Austin, TX
+    linkedin_location: Austin, TX
+sources:
+  - id: indeed
+    enabled: true
+    kind: aggregator
+timezone: America/Chicago
+""",
+    )
+    assert load_config(path).timezone == "America/Chicago"
+    path.write_text(path.read_text(encoding="utf-8").replace("America/Chicago", "Not/AZone"), encoding="utf-8")
+    with pytest.raises(ValueError, match="Not/AZone"):
+        load_config(path)
+
+
+def test_location_filter_and_remote_board_categories_are_read(tmp_path):
+    path = _places_config(
+        tmp_path,
+        """
+roles: [Designer]
+locations:
+  - name: Berlin, Germany
+    indeed_location: Berlin, Germany
+    linkedin_location: Berlin, Germany
+sources:
+  - id: we_work_remotely
+    enabled: true
+    kind: remote board
+    categories:
+      - product
+      - https://weworkremotely.com/categories/remote-design-jobs.rss
+location_filter:
+  offices: ["Kreuzberg"]
+  remote_regions: ["EU"]
+  exclude_regions: ["UK only"]
+""",
+    )
+    settings = load_config(path)
+    assert settings.wwr_categories == (
+        "product",
+        "https://weworkremotely.com/categories/remote-design-jobs.rss",
+    )
+    assert settings.location_rules.offices == (("Berlin, Germany", ("Kreuzberg",)),)
+    assert settings.location_rules.remote_regions == ("EU",)
+    assert settings.location_rules.exclude_regions == ("UK only",)
+
+
+def test_checked_in_examples_follow_their_own_cities():
+    root = Path(__file__).resolve().parents[1]
+    berlin = load_config(root / "examples" / "berlin-software-engineer.yaml")
+    assert berlin.country == "germany"
+    berlin_rows = filter_board_jobs(
+        [
+            {
+                "title": "Software Engineer",
+                "company": "A",
+                "location": "Berlin, Germany",
+                "is_remote": False,
+                "url": "https://example.com/berlin",
+                "description": "",
+                "source": "Example",
+            },
+            {
+                "title": "Software Engineer",
+                "company": "A",
+                "location": "Milan, Italy",
+                "is_remote": False,
+                "url": "https://example.com/milan",
+                "description": "",
+                "source": "Example",
+            },
+        ],
+        berlin,
+        "company site",
+    )
+    assert [row["place_searched"] for row in berlin_rows] == ["Berlin, Germany"]
+
+    milan = load_config(root / "examples" / "milan-product-manager.yaml")
+    assert milan.country == "italy"
+    assert milan.wwr_categories == ("product", "sales-and-marketing", "management-and-finance")
+    milan_rows = filter_board_jobs(
+        [
+            {
+                "title": "Product Manager",
+                "company": "A",
+                "location": "Milano",
+                "is_remote": False,
+                "url": "https://example.com/milano",
+                "description": "",
+                "source": "Example",
+            },
+            {
+                "title": "Product Manager",
+                "company": "A",
+                "location": "Remote - US only",
+                "is_remote": True,
+                "url": "https://example.com/us",
+                "description": "",
+                "source": "Example",
+            },
+        ],
+        milan,
+        "company site",
+    )
+    assert [row["url"] for row in milan_rows] == ["https://example.com/milano"]
+    assert milan_rows[0]["place_searched"] == "Milan, Italy"
+
+

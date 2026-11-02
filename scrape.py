@@ -46,6 +46,16 @@ except ModuleNotFoundError as exc:
     raise
 
 
+def _clock_now(timezone_name: str):
+    """Now in the configured timezone. An unknown label falls back to the computer clock."""
+    if timezone_name:
+        try:
+            return datetime.now(ZoneInfo(timezone_name))
+        except Exception:
+            pass
+    return datetime.now().astimezone()
+
+
 def collect_listings(settings: Settings, fetch, pause=time.sleep) -> tuple[list[dict], int]:
     """Search every role, place, and site.
 
@@ -117,14 +127,19 @@ def _run_search(config_path: Path, daily: bool) -> int:
     # Dedupe again across company pages, remote boards, and Indeed/LinkedIn.
     rows = dedupe(board_rows + aggregator_rows)
     rows = sort_rows(apply_new_flags(rows, seen))
-    write_outputs(rows, settings.csv_path, settings.excel_path)
+    write_outputs(
+        rows,
+        settings.csv_path,
+        settings.excel_path,
+        place_names=[place.name for place in settings.places],
+    )
     remembered = set(seen)
     for row in rows:
         remembered |= identity_keys(row)
     save_seen(settings.seen_file, remembered)
 
-    # Rome time, so a morning run lines up with the clock in Milan.
-    run_at = datetime.now(ZoneInfo("Europe/Rome"))
+    # The clock in config.yaml, or the computer's own timezone when that is blank.
+    run_at = _clock_now(settings.timezone)
     new_csv = settings.output_dir / "new_jobs.csv"
     last_run = settings.output_dir / "last_run.json"
     summary = write_daily_files(rows, new_csv, last_run, run_at)
