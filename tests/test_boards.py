@@ -147,6 +147,31 @@ def test_greenhouse_keeps_the_matching_office_and_the_snippet(tmp_path):
     assert rows[0]["date_posted"] == "2026-10-01"
 
 
+def test_company_pages_keep_every_title_when_the_filter_is_off(tmp_path):
+    body = _search("Berlin, Germany", "Berlin, Germany", "germany", "Germany").replace(
+        "require_title_match: true",
+        "require_title_match: false",
+    )
+    settings = _settings(tmp_path, body)
+    kept = filter_board_jobs(
+        [
+            {
+                "title": "Strategy Associate",
+                "company": "ACME",
+                "location": "Berlin, Germany",
+                "url": "https://example.com/strategy",
+                "description": "Not the searched phrase.",
+                "source": "Example careers",
+                "is_remote": False,
+            }
+        ],
+        settings,
+        "company site",
+    )
+    assert [row["title"] for row in kept] == ["Strategy Associate"]
+    assert kept[0]["role_searched"] == "Product Manager"
+
+
 def test_bending_spoons_uses_the_same_place_rules(tmp_path):
     page = """
     <script id="__NEXT_DATA__" type="application/json">

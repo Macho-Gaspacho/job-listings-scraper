@@ -1,0 +1,323 @@
+# Starter lists of job titles, written by hand.
+# These are common words to get a search started, not a complete dictionary.
+# Each role has English plus translations for it, de, fr, es, pt, nl, and pl.
+
+nurse:
+  en: [nurse, registered nurse]
+  it: [infermiere, infermiera, infermieristico, oss]
+  de: [krankenpfleger, krankenschwester, pflegefachkraft]
+  fr: [infirmier, infirmière]
+  es: [enfermero, enfermera]
+  pt: [enfermeiro, enfermeira]
+  nl: [verpleegkundige, verpleger, verpleegster]
+  pl: [pielęgniarka, pielęgniarz, pielegniarka]
+
+doctor:
+  en: [doctor, physician]
+  it: [medico, dottore, dottoressa]
+  de: [arzt, ärztin]
+  fr: [médecin, docteur]
+  es: [médico, doctor]
+  pt: [médico, doutor]
+  nl: [arts, dokter]
+  pl: [lekarz, lekarka]
+
+teacher:
+  en: [teacher]
+  it: [insegnante, docente]
+  de: [lehrer, lehrerin]
+  fr: [enseignant, enseignante, professeur]
+  es: [profesor, profesora, maestro]
+  pt: [professor, professora]
+  nl: [leraar, lerares, docent]
+  pl: [nauczyciel, nauczycielka]
+
+software engineer:
+  en: [software engineer, software developer]
+  it: [sviluppatore software, ingegnere del software, sviluppatore]
+  de: [software entwickler, softwareentwickler, software entwicklerin]
+  fr: [ingénieur logiciel, développeur logiciel, développeur]
+  es: [ingeniero de software, desarrollador de software]
+  pt: [engenheiro de software, desenvolvedor de software]
+  nl: [softwareontwikkelaar, software engineer]
+  pl: [inżynier oprogramowania, programista]
+
+data analyst:
+  en: [data analyst]
+  it: [analista dati, analista di dati]
+  de: [datenanalyst, daten analyst]
+  fr: [analyste de données, data analyst]
+  es: [analista de datos]
+  pt: [analista de dados]
+  nl: [data analist, data-analist]
+  pl: [analityk danych]
+
+project manager:
+  en: [project manager]
+  it: [project manager, responsabile di progetto]
+  de: [projektmanager, projekt manager]
+  fr: [chef de projet]
+  es: [jefe de proyecto, gestor de proyectos]
+  pt: [gerente de projetos]
+  nl: [projectmanager, project manager]
+  pl: [kierownik projektu]
+
+product manager:
+  en: [product manager]
+  it: [product manager, responsabile di prodotto]
+  de: [produktmanager, product manager]
+  fr: [chef de produit]
+  es: [gerente de producto, product manager]
+  pt: [gerente de produto]
+  nl: [productmanager, product manager]
+  pl: [menedżer produktu, product manager]
+
+sales:
+  en: [sales, sales representative]
+  it: [vendite, commerciale]
+  de: [vertrieb, verkauf]
+  fr: [commercial, ventes]
+  es: [ventas, comercial]
+  pt: [vendas, comercial]
+  nl: [verkoop, sales]
+  pl: [sprzedaż, handlowiec]
+
+accountant:
+  en: [accountant]
+  it: [contabile, ragioniere]
+  de: [buchhalter, buchhalterin]
+  fr: [comptable]
+  es: [contable, contador]
+  pt: [contador, contabilista]
+  nl: [accountant, boekhouder]
+  pl: [księgowy, ksiegowy]
+
+warehouse worker:
+  en: [warehouse worker, warehouse operative]
+  it: [magazziniere, operaio di magazzino]
+  de: [lagerarbeiter, lagerist]
+  fr: [magasinier, préparateur de commandes]
+  es: [mozo de almacén, almacenero]
+  pt: [estoquista, auxiliar de armazém]
+  nl: [magazijnmedewerker, magazijnier]
+  pl: [magazynier, pracownik magazynu]
+
+driver:
+  en: [driver]
+  it: [autista, conducente]
+  de: [fahrer, kraftfahrer]
+  fr: [chauffeur, conducteur]
+  es: [conductor, conductora]
+  pt: [motorista]
+  nl: [chauffeur, bestuurder]
+  pl: [kierowca]
+
+chef:
+  en: [chef, cook]
+  it: [cuoco, cuoca, chef]
+  de: [koch, köchin]
+  fr: [cuisinier, cuisinière, chef]
+  es: [cocinero, cocinera]
+  pt: [cozinheiro, cozinheira]
+  nl: [kok, chef-kok]
+  pl: [kucharz, kucharka]
+
+waiter:
+  en: [waiter, waitress, server]
+  it: [cameriere, cameriera]
+  de: [kellner, kellnerin]
+  fr: [serveur, serveuse]
+  es: [camarero, camarera]
+  pt: [garçom, garcom, empregado de mesa]
+  nl: [ober, serveerster]
+  pl: [kelner, kelnerka]
+
+customer service:
+  en: [customer service, customer support]
+  it: [servizio clienti, assistenza clienti]
+  de: [kundenservice, kundendienst]
+  fr: [service client, service clients]
+  es: [atención al cliente, servicio al cliente]
+  pt: [atendimento ao cliente]
+  nl: [klantenservice, klantendienst]
+  pl: [obsługa klienta, obsluga klienta]
+
+marketing:
+  en: [marketing, marketing manager]
+  it: [marketing]
+  de: [marketing]
+  fr: [marketing]
+  es: [marketing]
+  pt: [marketing]
+  nl: [marketing]
+  pl: [marketing]
+
+designer:
+  en: [designer]
+  it: [designer, progettista]
+  de: [designer, gestalter]
+  fr: [designer, concepteur]
+  es: [diseñador, diseñadora]
+  pt: [designer, desenhista]
+  nl: [ontwerper, designer]
+  pl: [projektant, designer]
+
+hr:
+  en: [hr, human resources]
+  it: [risorse umane, hr]
+  de: [personalreferent, personalwesen, hr]
+  fr: [ressources humaines, rh]
+  es: [recursos humanos]
+  pt: [recursos humanos]
+  nl: [personeelszaken, hr]
+  pl: [kadry, zasoby ludzkie, hr]
+
+electrician:
+  en: [electrician]
+  it: [elettricista]
+  de: [elektriker]
+  fr: [électricien]
+  es: [electricista]
+  pt: [eletricista]
+  nl: [elektricien]
+  pl: [elektryk]
+
+lawyer:
+  en: [lawyer, attorney]
+  it: [avvocato]
+  de: [anwalt, rechtsanwalt]
+  fr: [avocat]
+  es: [abogado]
+  pt: [advogado]
+  nl: [advocaat]
+  pl: [prawnik, adwokat]
+
+mechanic:
+  en: [mechanic]
+  it: [meccanico]
+  de: [mechaniker, kfz mechatroniker]
+  fr: [mécanicien]
+  es: [mecánico]
+  pt: [mecânico]
+  nl: [monteur, mecanicien]
+  pl: [mechanik]
+
+receptionist:
+  en: [receptionist]
+  it: [receptionist, addetto alla reception]
+  de: [empfangsmitarbeiter, rezeptionist]
+  fr: [réceptionniste]
+  es: [recepcionista]
+  pt: [recepcionista]
+  nl: [receptionist, receptioniste]
+  pl: [recepcjonista]
+
+pharmacist:
+  en: [pharmacist]
+  it: [farmacista]
+  de: [apotheker, apothekerin]
+  fr: [pharmacien]
+  es: [farmacéutico]
+  pt: [farmacêutico]
+  nl: [apotheker]
+  pl: [farmaceuta]
+
+dentist:
+  en: [dentist]
+  it: [dentista]
+  de: [zahnarzt, zahnärztin]
+  fr: [dentiste]
+  es: [dentista]
+  pt: [dentista]
+  nl: [tandarts]
+  pl: [dentysta]
+
+plumber:
+  en: [plumber]
+  it: [idraulico]
+  de: [klempner, installateur]
+  fr: [plombier]
+  es: [fontanero]
+  pt: [canalizador, encanador]
+  nl: [loodgieter]
+  pl: [hydraulik]
+
+cashier:
+  en: [cashier]
+  it: [cassiere, cassiera]
+  de: [kassierer, kassiererin]
+  fr: [caissier, caissière]
+  es: [cajero, cajera]
+  pt: [caixa, operador de caixa]
+  nl: [caissière, kassamedewerker]
+  pl: [kasjer, kasjerka]
+
+security guard:
+  en: [security guard, security officer]
+  it: [guardia giurata, addetto alla sicurezza]
+  de: [sicherheitsmitarbeiter, wachmann]
+  fr: [agent de sécurité]
+  es: [vigilante de seguridad, guardia de seguridad]
+  pt: [vigilante, segurança]
+  nl: [beveiliger]
+  pl: [ochroniarz, pracownik ochrony]
+
+data scientist:
+  en: [data scientist]
+  it: [data scientist]
+  de: [data scientist, datenwissenschaftler]
+  fr: [data scientist]
+  es: [científico de datos, data scientist]
+  pt: [cientista de dados]
+  nl: [data scientist]
+  pl: [data scientist]
+
+business analyst:
+  en: [business analyst]
+  it: [business analyst, analista di business]
+  de: [business analyst, geschäftsanalyst]
+  fr: [analyste métier, business analyst]
+  es: [analista de negocio]
+  pt: [analista de negócios]
+  nl: [business analist]
+  pl: [analityk biznesowy]
+
+store manager:
+  en: [store manager]
+  it: [store manager, responsabile di negozio]
+  de: [filialleiter, marktleiter]
+  fr: [responsable de magasin]
+  es: [jefe de tienda, gerente de tienda]
+  pt: [gerente de loja]
+  nl: [filiaalmanager, winkelmanager]
+  pl: [kierownik sklepu]
+
+cleaner:
+  en: [cleaner, janitor]
+  it: [addetto alle pulizie]
+  de: [reinigungskraft, putzkraft]
+  fr: [agent d entretien, agent de nettoyage]
+  es: [personal de limpieza, limpiador]
+  pt: [auxiliar de limpeza]
+  nl: [schoonmaker]
+  pl: [sprzątacz, sprzatacz]
+
+bartender:
+  en: [bartender, barman]
+  it: [barista, barman]
+  de: [barkeeper, bartender]
+  fr: [barman, barmaid]
+  es: [camarero de barra, bartender]
+  pt: [bartender, barman]
+  nl: [barkeeper, barman]
+  pl: [barman]
+
+carpenter:
+  en: [carpenter]
+  it: [falegname]
+  de: [tischler, schreiner]
+  fr: [menuisier, charpentier]
+  es: [carpintero]
+  pt: [carpinteiro]
+  nl: [timmerman]
+  pl: [stolarz]

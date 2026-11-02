@@ -12,9 +12,12 @@ from listings import (
     dedupe,
     excluded_region,
     listing_key,
+    normalize_url,
+    roles_for_title,
     row_from_hit,
     snippet,
     sort_rows,
+    title_is_excluded,
     title_is_relevant,
 )
 from regions import build_location_rules, canonical_country
@@ -71,12 +74,19 @@ def test_row_from_hit_drops_a_posting_with_no_title():
     assert row_from_hit({"company": "Prada"}, "PM", "Milan", 80) is None
 
 
-def test_listing_key_prefers_the_url_and_ignores_tracking_fragments():
-    left = listing_key({"url": "https://it.indeed.com/viewjob?jk=ABC/", "title": "A"})
-    right = listing_key(
-        {"url": "https://it.indeed.com/viewjob?jk=abc#apply", "title": "B"}
+def test_listing_key_ignores_fragments_and_tracking_but_keeps_path_case():
+    left = listing_key(
+        {"url": "HTTPS://IT.Indeed.com/ViewJob?jk=AbC&utm_source=email&refId=9/", "title": "A"}
     )
+    right = listing_key(
+        {"url": "https://it.indeed.com/ViewJob?jk=AbC&trackingId=1&trk=x#apply", "title": "B"}
+    )
+    other_case = listing_key({"url": "https://it.indeed.com/viewjob?jk=AbC", "title": "C"})
+    other_query = listing_key({"url": "https://it.indeed.com/ViewJob?jk=abc", "title": "D"})
     assert left == right
+    assert normalize_url(left.removeprefix("url:")) == "https://it.indeed.com/ViewJob?jk=AbC"
+    assert left != other_case
+    assert left != other_query
 
 
 def test_listing_key_falls_back_to_title_company_and_location():
@@ -345,12 +355,83 @@ def test_apply_new_flags_marks_only_unseen_listings():
     assert flagged[1]["is_new"] == "yes"
 
 
-def test_title_match_ignores_capital_letters_and_extra_words():
+def test_title_match_uses_whole_words_in_any_order():
     phrases = ["product manager", "product owner"]
     assert title_is_relevant("Senior Product Manager", phrases)
     assert title_is_relevant("PRODUCT OWNER (Milan)", phrases)
     assert not title_is_relevant("Strategy Associate", phrases)
     assert title_is_relevant("Anything", [])
+    assert title_is_relevant("Three-shift Chef", ["hr"]) is False
+    assert title_is_relevant("Waiter", ["it"]) is False
+    assert title_is_relevant("Software-Entwickler (m/w/d)", ["software entwickler"]) is True
+    assert title_is_relevant("Engineer, Software", ["software engineer"]) is True
+
+
+def test_rejected_words_do_not_match_inside_longer_words():
+    assert title_is_excluded("Senior Nurse", ["senior"]) is True
+    assert title_is_excluded("Seniority Lead", ["senior"]) is False
+    assert title_is_excluded("Internal Auditor", ["intern"]) is False
+    assert title_is_excluded("Nurse Intern", ["senior", "intern"]) is True
+
+
+def test_roles_for_title_keeps_every_role_when_the_filter_is_off():
+    assert roles_for_title("Infermiere", ["Nurse"], {"Nurse": ["nurse"]}, False) == ["Nurse"]
+    assert roles_for_title(
+        "Chef",
+        ["Nurse", "Chef"],
+        {"Nurse": ["nurse"], "Chef": ["chef"]},
+        False,
+    ) == ["Nurse", "Chef"]
+    assert roles_for_title("Infermiere", ["Nurse"], {"Nurse": ["nurse"]}, True) == []
+    assert roles_for_title(
+        "Infermiere",
+        ["Nurse"],
+        {"Nurse": ["nurse", "infermiere"]},
+        True,
+    ) == ["Nurse"]
+
+
+def _job(title, company, location, url, source):
+    return {
+        "title": title,
+        "company": company,
+        "location": location,
+        "source": source,
+        "source_type": "aggregator",
+        "url": url,
+        "description": "",
+        "role_searched": "Store Manager",
+        "place_searched": location,
+        "date_posted": "",
+    }
+
+
+def test_same_title_and_company_in_different_cities_stay_separate():
+    rows = [
+        _job("Store Manager", "Lidl", "Berlin, Germany", "https://example.com/berlin", "indeed"),
+        _job("Store Manager", "Lidl", "Milan, Italy", "https://example.com/milan", "indeed"),
+        _job("Store Manager", "Lidl", "Warsaw, Poland", "https://example.com/warsaw", "indeed"),
+    ]
+    assert len(dedupe(rows)) == 3
+
+
+def test_accented_and_plain_spellings_of_one_city_merge():
+    rows = [
+        _job("Store Manager", "Lidl", "München, Germany", "https://example.com/a", "indeed"),
+        _job("Store Manager", "Lidl", "Munchen", "https://example.com/b", "linkedin"),
+    ]
+    assert len(dedupe(rows)) == 1
+
+
+def test_same_job_from_indeed_and_linkedin_in_one_city_merges():
+    rows = [
+        _job("Store Manager", "Lidl", "Milan, Italy", "https://it.indeed.com/viewjob?jk=1", "indeed"),
+        _job("Store Manager", "Lidl", "Milan, Lombardy", "https://www.linkedin.com/jobs/view/9", "linkedin"),
+    ]
+    kept = dedupe(rows)
+    assert len(kept) == 1
+    assert "indeed" in kept[0]["source"]
+    assert "linkedin" in kept[0]["source"]
 
 
 def test_sort_puts_new_jobs_first_and_newest_dates_above_older_ones():

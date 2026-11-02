@@ -14,11 +14,13 @@ import yaml
 
 from regions import (
     INDEED_COUNTRIES,
+    OTHER_COUNTRIES,
     LocationFilter,
     LocationRules,
     build_location_rules,
     canonical_country,
     country_from_places,
+    english_name,
     system_timezone_name,
     validate_timezone,
 )
@@ -63,6 +65,7 @@ class Place:
     linkedin_location: str
     remote: bool = False
     distance_miles: int | None = None
+    search_indeed: bool = True
 
 
 @dataclass
@@ -94,6 +97,7 @@ class Settings:
     seen_file: Path
     require_title_match: bool = False
     title_keywords: dict[str, list[str]] | None = None
+    exclude_keywords: list[str] | None = None
     company_pages_enabled: bool = False
     remote_boards: list[str] | None = None
     companies: list[Company] | None = None
@@ -230,26 +234,34 @@ def _load_location_filter(raw: dict) -> LocationFilter | None:
     )
 
 
-def _load_country(raw: dict, places: list[Place]) -> str:
-    """The Indeed country. Taken from the first office when the file leaves it out."""
+def _load_country(raw: dict, places: list[Place], sites: list[str]) -> str:
+    """The country for this search. Taken from the first office when the file leaves it out."""
     provided = raw.get("country", None)
     if provided is None or not str(provided).strip():
         derived = country_from_places(places)
         if not derived:
             raise ValueError(
                 "config.yaml does not set country, and none of the locations names a country "
-                "this program recognises. Add a country Indeed accepts, such as germany, "
+                "this program recognises. Add a country, such as germany or armenia, "
                 "or name a place like Berlin, Germany."
             )
-        return derived
-    country = canonical_country(str(provided))
-    if country not in INDEED_COUNTRIES:
-        written = str(provided).strip()
-        raise ValueError(
-            f"Country '{written}' is not one this program can send to Indeed. "
-            "Use an English name such as Germany, Italy, United Kingdom, or United States."
-        )
-    return country
+        country = derived
+    else:
+        country = canonical_country(str(provided))
+    if country in INDEED_COUNTRIES:
+        return country
+    written = english_name(country) if country else str(provided).strip()
+    if country in OTHER_COUNTRIES:
+        if "indeed" in sites:
+            raise ValueError(
+                f"Indeed does not cover {written}. "
+                "Turn Indeed off and use LinkedIn, or choose a country Indeed supports."
+            )
+        return country
+    raise ValueError(
+        f"Country '{str(provided).strip() if provided else written}' is not one this program recognises. "
+        "Use an English name such as Germany, Italy, Armenia, or United States."
+    )
 
 
 def _load_timezone(raw: dict) -> str:
@@ -298,6 +310,8 @@ def load_config(path: str | Path) -> Settings:
             miles = None
         else:
             miles = _whole_number(distance, "distance_miles", 0, 200)
+        if "search_indeed" in entry and not isinstance(entry.get("search_indeed"), bool):
+            raise ValueError("search_indeed must be true or false.")
         places.append(
             Place(
                 name=str(entry["name"]).strip(),
@@ -311,6 +325,7 @@ def load_config(path: str | Path) -> Settings:
                 ).strip(),
                 remote=bool(entry.get("remote", False)),
                 distance_miles=miles,
+                search_indeed=bool(entry.get("search_indeed", True)),
             )
         )
     if not places:
@@ -332,8 +347,11 @@ def load_config(path: str | Path) -> Settings:
     title_keywords = {
         str(role).strip(): _text_list(phrases) for role, phrases in raw_keywords.items()
     }
+    if "exclude_keywords" in raw and not isinstance(raw.get("exclude_keywords"), list):
+        raise ValueError("exclude_keywords in config.yaml should be a list.")
+    exclude_keywords = _text_list(raw.get("exclude_keywords"))
 
-    country = _load_country(raw, places)
+    country = _load_country(raw, places, sites)
     location_filter = _load_location_filter(raw)
 
     output = raw.get("output") or {}
@@ -356,6 +374,7 @@ def load_config(path: str | Path) -> Settings:
         seen_file=root / str(output.get("seen_file") or "data/seen_jobs.json"),
         require_title_match=bool(raw.get("require_title_match", False)),
         title_keywords=title_keywords,
+        exclude_keywords=exclude_keywords,
         company_pages_enabled=company_pages_enabled,
         remote_boards=remote_boards,
         companies=companies,

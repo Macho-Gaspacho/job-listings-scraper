@@ -27,6 +27,9 @@ def test_aliases_map_to_indeed_country_codes():
     assert canonical_country("España") == "spain"
     assert canonical_country("Turkey") == "türkiye"
     assert canonical_country("United Kingdom") == "uk"
+    assert canonical_country("Armenia") == "armenia"
+    assert canonical_country("Serbia") == "serbia"
+    assert canonical_country("Georgia") == "georgia"
     assert canonical_country("narnia") is None
 
 
@@ -99,3 +102,5 @@ def test_whole_words_do_not_match_inside_longer_words():
     assert contains_phrase("india", "Finland") is False
     assert contains_phrase("usa", "Remote - USA") is True
     assert contains_phrase("Munchen", "München") is True
+    assert contains_phrase("frankfurt", "Frankfurt-am-Main") is True
+    assert contains_phrase("enfermero", "Enfermero de urgencias") is True

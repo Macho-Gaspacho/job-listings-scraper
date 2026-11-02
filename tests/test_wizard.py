@@ -2,9 +2,12 @@
 
 from pathlib import Path
 
+import pytest
+
 from config import load_config
+from listings import title_is_relevant
 from scrape import main
-from setup_wizard import run_wizard
+from setup_wizard import launcher_name, parse_place, resolve_remote_area, run_wizard
 
 
 class Script:
@@ -50,8 +53,13 @@ def test_wizard_writes_a_config_from_answers(tmp_path):
             "Berlin, Germany",
             "y",
             "",
+            "n",
+            "",
             "backend, python",
+            "senior, intern",
             "1,2",
+            "",
+            "",
             "y",
             "n",
         ],
@@ -80,9 +88,199 @@ def test_wizard_writes_a_config_from_answers(tmp_path):
     assert settings.remote_boards == []
     assert settings.companies == []
     assert settings.pause_seconds == 2
-    assert settings.title_keywords["Software Engineer"] == ["backend", "python"]
-    assert settings.title_keywords["Data Analyst"] == ["backend", "python"]
+    assert settings.results_per_search == 20
+    assert settings.posted_within_days == 14
+    assert settings.title_keywords["Software Engineer"] == ["software engineer", "backend", "python"]
+    assert settings.title_keywords["Data Analyst"] == ["data analyst", "backend", "python"]
+    assert settings.exclude_keywords == ["senior", "intern"]
+    assert "Next time just double-click start.command" in script.text
+    assert "When you are ready, run: python scrape.py" not in script.text
     assert "python scrape.py --setup" in config.read_text(encoding="utf-8")
+
+
+def test_parse_place_accepts_a_country_a_city_or_remote():
+    italy, italy_error = parse_place("Italy")
+    assert italy_error is None
+    assert italy["kind"] == "country"
+    assert italy["country"] == "italy"
+    assert italy["indeed"] is True
+    assert italy["name"] == "Italy"
+
+    armenia, armenia_error = parse_place("Armenia")
+    assert armenia_error is None
+    assert armenia["country"] == "armenia"
+    assert armenia["indeed"] is False
+
+    remote, remote_error = parse_place("Remote")
+    assert remote_error is None
+    assert remote == {"kind": "remote"}
+
+    city, city_error = parse_place("Madrid, Spain")
+    assert city_error is None
+    assert city["kind"] == "city"
+    assert city["country"] == "spain"
+
+    missing, missing_error = parse_place("Berlin")
+    assert missing is None
+    assert missing_error == "country"
+
+
+def test_resolve_remote_area_accepts_countries_and_linkedin_regions():
+    assert resolve_remote_area("Europe") == ("Europe", None, False)
+    assert resolve_remote_area("Worldwide") == ("Worldwide", None, False)
+    assert resolve_remote_area("France") == ("France", "france", True)
+    assert resolve_remote_area("Serbia") == ("Serbia", "serbia", False)
+    assert resolve_remote_area("Georgia") == ("Georgia", "georgia", False)
+    assert resolve_remote_area("a nearby village") is None
+
+
+def test_launcher_name_follows_the_operating_system(monkeypatch):
+    monkeypatch.setattr("setup_wizard.sys.platform", "win32")
+    assert launcher_name() == "start.bat"
+    monkeypatch.setattr("setup_wizard.sys.platform", "darwin")
+    assert launcher_name() == "start.command"
+
+
+@pytest.mark.parametrize(
+    ("country_name", "code", "title", "word"),
+    [
+        ("Italy", "italy", "Infermiere", "infermiere"),
+        ("Germany", "germany", "Krankenpfleger", "krankenpfleger"),
+        ("Spain", "spain", "Enfermero de urgencias", "enfermero"),
+        ("Poland", "poland", "Pielęgniarka", "pielęgniarka"),
+        ("Netherlands", "netherlands", "Verpleegkundige", "verpleegkundige"),
+    ],
+)
+def test_wizard_country_wide_search_keeps_local_nurse_titles(
+    tmp_path, country_name, code, title, word
+):
+    script, config = _run(
+        tmp_path,
+        [
+            "Nurse",
+            country_name,
+            "n",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "n",
+        ],
+    )
+    settings = load_config(config)
+    assert settings.country == code
+    assert [place.name for place in settings.places] == [country_name]
+    assert settings.places[0].remote is False
+    assert settings.places[0].indeed_location == country_name
+    assert settings.places[0].linkedin_location == country_name
+    assert settings.places[0].distance_miles is None
+    assert settings.places[0].search_indeed is True
+    assert settings.require_title_match is True
+    assert settings.results_per_search == 20
+    assert settings.posted_within_days == 14
+    assert word in settings.title_keywords["Nurse"]
+    assert title_is_relevant(title, settings.title_keywords["Nurse"])
+    assert "Also accept these titles?" in script.text
+    assert "starter set" in script.text
+    assert "Press Enter for 20" in script.text
+    assert "Press Enter for 14" in script.text
+    assert "Next time just double-click start.command" in script.text
+
+
+def test_wizard_leaves_indeed_off_for_a_country_it_does_not_cover(tmp_path):
+    script, config = _run(
+        tmp_path,
+        [
+            "Nurse",
+            "Armenia",
+            "n",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "n",
+        ],
+    )
+    settings = load_config(config)
+    assert settings.country == "armenia"
+    assert settings.places[0].name == "Armenia"
+    assert settings.places[0].indeed_location == "Armenia"
+    assert settings.places[0].search_indeed is False
+    assert settings.sites == ["linkedin"]
+    assert "Indeed does not cover Armenia" in script.text
+    assert "Indeed was left off" in script.text
+
+
+def test_wizard_remote_in_another_country_can_stay_on_linkedin_only(tmp_path):
+    script, config = _run(
+        tmp_path,
+        [
+            "Nurse",
+            "Berlin, Germany",
+            "y",
+            "France",
+            "1",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "n",
+        ],
+    )
+    settings = load_config(config)
+    assert settings.country == "germany"
+    assert settings.places[0].name == "Berlin, Germany"
+    assert settings.places[0].search_indeed is True
+    assert settings.places[1].name == "Remote"
+    assert settings.places[1].indeed_location == "France"
+    assert settings.places[1].search_indeed is False
+    assert settings.sites == ["indeed", "linkedin"]
+    assert "Indeed can only search one country" in script.text
+    assert "LinkedIn only" in script.text
+
+
+def test_wizard_treats_europe_as_a_linkedin_only_remote_area(tmp_path):
+    script, config = _run(
+        tmp_path,
+        [
+            "Chef",
+            "Madrid, Spain",
+            "y",
+            "Europe",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "n",
+        ],
+    )
+    settings = load_config(config)
+    assert settings.country == "spain"
+    assert settings.places[0].search_indeed is True
+    assert settings.places[1].remote is True
+    assert settings.places[1].indeed_location == "Europe"
+    assert settings.places[1].linkedin_location == "Europe"
+    assert settings.places[1].search_indeed is False
+    assert settings.sites == ["indeed", "linkedin"]
+    assert "cannot search Europe" in script.text
+    assert "LinkedIn only" in script.text
+    assert "cocinero" in settings.title_keywords["Chef"]
 
 
 def test_wizard_can_skip_remote_and_save_a_company(tmp_path):
@@ -92,6 +290,9 @@ def test_wizard_can_skip_remote_and_save_a_company(tmp_path):
             "Nurse, Doctor",
             "Milan, Italy",
             "n",
+            "y",
+            "",
+            "",
             "",
             "1,4",
             "Example Hospital",
@@ -99,6 +300,8 @@ def test_wizard_can_skip_remote_and_save_a_company(tmp_path):
             "greenhouse",
             "examplehospital",
             "n",
+            "",
+            "",
             "y",
             "n",
         ],
@@ -112,6 +315,9 @@ def test_wizard_can_skip_remote_and_save_a_company(tmp_path):
     assert settings.companies[0].system == "greenhouse"
     assert settings.companies[0].token == "examplehospital"
     assert settings.remote_boards == []
+    assert "infermiere" in settings.title_keywords["Nurse"]
+    assert "medico" in settings.title_keywords["Doctor"]
+    assert title_is_relevant("Infermiere", settings.title_keywords["Nurse"])
 
 
 def test_wizard_defaults_and_offers_to_search(tmp_path):
@@ -131,6 +337,10 @@ def test_wizard_defaults_and_offers_to_search(tmp_path):
             "",
             "",
             "",
+            "",
+            "",
+            "",
+            "",
             "y",
         ],
         run_search=run_search,
@@ -138,6 +348,9 @@ def test_wizard_defaults_and_offers_to_search(tmp_path):
     settings = load_config(config)
     assert settings.roles == ["C++ Developer"]
     assert settings.title_keywords["C++ Developer"] == ["c++ developer"]
+    assert settings.require_title_match is False
+    assert settings.results_per_search == 20
+    assert settings.posted_within_days == 14
     assert settings.country == "usa"
     assert settings.places[1].remote is True
     assert settings.places[1].indeed_location == "United States"
@@ -170,14 +383,24 @@ def test_wizard_backs_up_an_existing_config_only_after_confirmation(tmp_path):
         "Teacher",
         "Paris, France",
         "n",
+        "n",
+        "",
+        "",
         "",
         "2",
+        "",
+        "",
         "n",
         "Teacher",
         "Paris, France",
         "n",
+        "n",
+        "",
+        "",
         "",
         "2",
+        "",
+        "",
         "y",
         "n",
     ]

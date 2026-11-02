@@ -12,6 +12,8 @@ from datetime import datetime
 from functools import lru_cache
 from zoneinfo import ZoneInfo
 
+from matching import normalise
+
 
 # Country names Indeed accepts. The setup wizard and config.py both use this list.
 INDEED_COUNTRIES = frozenset(
@@ -81,6 +83,42 @@ INDEED_COUNTRIES = frozenset(
     }
 )
 
+# Countries LinkedIn can search that Indeed's country list does not include.
+# The wizard still allows these and leaves Indeed off.
+OTHER_COUNTRIES = frozenset(
+    {
+        "albania",
+        "armenia",
+        "azerbaijan",
+        "bangladesh",
+        "belarus",
+        "bosnia and herzegovina",
+        "bulgaria",
+        "croatia",
+        "cyprus",
+        "estonia",
+        "georgia",
+        "ghana",
+        "iceland",
+        "jordan",
+        "kazakhstan",
+        "kenya",
+        "latvia",
+        "lebanon",
+        "lithuania",
+        "malta",
+        "moldova",
+        "montenegro",
+        "nepal",
+        "north macedonia",
+        "serbia",
+        "slovakia",
+        "slovenia",
+        "sri lanka",
+        "tunisia",
+    }
+)
+
 # A name a person might type, and the Indeed country it means.
 COUNTRY_ALIASES = {
     "czechia": "czech republic",
@@ -105,6 +143,10 @@ COUNTRY_ALIASES = {
     "españa": "spain",
     "holland": "netherlands",
     "the netherlands": "netherlands",
+    "bosnia": "bosnia and herzegovina",
+    "macedonia": "north macedonia",
+    "republic of serbia": "serbia",
+    "republic of armenia": "armenia",
 }
 
 # A common native name, used when a remote advert writes the country that way.
@@ -218,19 +260,25 @@ def fold_text(value: object) -> str:
 
 
 def contains_phrase(phrase: str, text: str) -> bool:
-    """True when phrase is a whole word or a whole sequence of words in text."""
-    needle = fold_text(phrase)
-    haystack = fold_text(text)
-    if not needle or not haystack:
+    """True when phrase is a whole word or a whole sequence of words in text.
+
+    Words are split the same way as job titles, so a hyphen is a gap and
+    "us" does not match inside "user".
+    """
+    needle = [token[:-1] if token.endswith("*") else token for token in normalise(phrase)]
+    needle = [token for token in needle if token]
+    haystack = [token[:-1] if token.endswith("*") else token for token in normalise(text)]
+    haystack = [token for token in haystack if token]
+    if not needle or not haystack or len(needle) > len(haystack):
         return False
-    pattern = rf"(?<![a-z0-9]){re.escape(needle)}(?![a-z0-9])"
-    return re.search(pattern, haystack) is not None
+    size = len(needle)
+    return any(haystack[index : index + size] == needle for index in range(len(haystack) - size + 1))
 
 
 @lru_cache(maxsize=1)
 def _canonical_index() -> dict[str, str]:
     index: dict[str, str] = {}
-    for code in INDEED_COUNTRIES:
+    for code in INDEED_COUNTRIES | OTHER_COUNTRIES:
         index[fold_text(code)] = code
     for alias, code in COUNTRY_ALIASES.items():
         index[fold_text(alias)] = code
@@ -246,10 +294,17 @@ def canonical_country(name: str) -> str | None:
 
 
 def english_name(country: str) -> str:
-    """The English name for an Indeed country code."""
+    """The English name for a country code."""
     if country in _ENGLISH_NAMES:
         return _ENGLISH_NAMES[country]
-    return " ".join(part.capitalize() for part in country.split())
+    small = {"and", "of", "the"}
+    words = []
+    for index, part in enumerate(country.split()):
+        if index and part in small:
+            words.append(part)
+        else:
+            words.append(part.capitalize())
+    return " ".join(words)
 
 
 def country_from_places(places) -> str | None:

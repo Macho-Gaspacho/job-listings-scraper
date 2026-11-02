@@ -7,7 +7,9 @@ drops duplicate links, and decides which rows are new.
 from __future__ import annotations
 
 import re
+from urllib.parse import parse_qsl, urlsplit, urlunsplit, urlencode
 
+from matching import normalise, phrase_matches
 from regions import classify_place, excluded_region
 
 __all__ = [
@@ -24,6 +26,7 @@ __all__ = [
     "row_from_hit",
     "snippet",
     "sort_rows",
+    "title_is_excluded",
     "title_is_relevant",
 ]
 
@@ -93,16 +96,38 @@ def date_text(value: object) -> str:
     return text[:10]
 
 
+_TRACKING_KEYS = {"refid", "trackingid", "trk"}
+
+
+def _is_tracking_param(key: str) -> bool:
+    folded = key.casefold()
+    return folded.startswith("utm_") or folded in _TRACKING_KEYS
+
+
 def normalize_url(url: object) -> str:
     """The same link written the same way, so duplicates can be spotted.
 
-    Fragments (#apply) and a trailing slash are ignored. The query string
-    is kept, because Indeed puts the job id there (?jk=...).
+    Fragments (#apply) and a trailing slash are ignored. Only the scheme
+    and host are lowercased, because a path or query can care about case.
+    Tracking parameters (utm_*, refId, trackingId, trk) are dropped.
+    The rest of the query is kept, because Indeed puts the job id there (?jk=...).
     """
     text = clean_text(url)
     if not text:
         return ""
-    return text.split("#", 1)[0].rstrip("/").lower()
+    bare = text.split("#", 1)[0].rstrip("/")
+    parts = urlsplit(bare)
+    if not parts.scheme or not parts.hostname:
+        return bare
+    host = parts.hostname.lower()
+    if parts.port:
+        host = f"{host}:{parts.port}"
+    pairs = [
+        (key, value)
+        for key, value in parse_qsl(parts.query, keep_blank_values=True)
+        if not _is_tracking_param(key)
+    ]
+    return urlunsplit((parts.scheme.lower(), host, parts.path.rstrip("/"), urlencode(pairs), ""))
 
 
 # Least crowded source wins when the same role is posted in more than one place.
@@ -143,13 +168,35 @@ def company_name_key(value: object) -> str:
     return " ".join(parts)
 
 
+def _match_words(value: object) -> str:
+    """Title or city words with accents and hyphens folded away."""
+    words = []
+    for token in normalise(value):
+        word = token[:-1] if token.endswith("*") else token
+        if word:
+            words.append(word)
+    return " ".join(words)
+
+
+def city_key(location: object) -> str:
+    """The first place in a location, such as the city before the comma."""
+    text = clean_text(location)
+    if not text:
+        return ""
+    first = re.split(r"[,;/|]", text, maxsplit=1)[0]
+    return _match_words(first)
+
+
 def title_company_key(row: dict) -> str:
-    """Same job title at the same company, ignoring the website it came from."""
-    title = _words(row.get("title"))
+    """Same job title at the same company in the same city.
+
+    The website it came from is ignored. A different city stays a different job.
+    """
+    title = _match_words(row.get("title"))
     company = company_name_key(row.get("company"))
     if not title or not company:
         return ""
-    return f"role:{title}|{company}"
+    return f"role:{title}|{company}|{city_key(row.get('location'))}"
 
 
 def listing_key(row: dict) -> str:
@@ -172,8 +219,8 @@ def listing_key(row: dict) -> str:
 def identity_keys(row: dict) -> set[str]:
     """Every id that should count as 'already seen' for this row.
 
-    A merged row remembers the link from each source, plus title + company,
-    so the same role is not marked new just because a second site listed it.
+    A merged row remembers the link from each source, plus title, company,
+    and city, so the same role is not marked new just because a second site listed it.
     """
     stored = row.get("_keys")
     if stored:
@@ -243,11 +290,12 @@ def _merge_rows(current: dict, incoming: dict) -> dict:
 
 
 def dedupe(rows: list[dict]) -> list[dict]:
-    """Keep one row per link, and one row per title + company.
+    """Keep one row per link, and one row per title + company + city.
 
     The same posting is often found by more than one role, and the same
     role is often listed on Indeed and on the company's own site. The
     company site is kept when both exist, because that is where you apply.
+    The same title at the same company in another city stays its own row.
     """
     kept: list[dict] = []
     position: dict[str, int] = {}
@@ -285,34 +333,35 @@ def apply_new_flags(rows: list[dict], seen: set[str]) -> list[dict]:
 def roles_for_title(title: str, roles: list[str], keywords: dict[str, list[str]] | None, require_match: bool) -> list[str]:
     """Which configured roles this title belongs to.
 
-    With the filter on, a title must contain a phrase for that role.
-    A title can match more than one role.
+    With the filter off, every searched role is kept.
+    With the filter on, a title must match a phrase for that role.
+    A role with no phrases is kept. A title can match more than one role.
     """
+    if not require_match:
+        return list(roles)
     matched = []
     table = keywords or {}
     for role in roles:
         phrases = table.get(role) or []
-        if require_match and phrases:
-            if title_is_relevant(title, phrases):
-                matched.append(role)
-        elif title_is_relevant(title, phrases):
+        if title_is_relevant(title, phrases):
             matched.append(role)
     return matched
 
 
 def title_is_relevant(title: str, phrases: list[str]) -> bool:
-    """True when the title contains one of the phrases, ignoring capitals.
+    """True when every word of one phrase appears as a whole word in the title.
 
-    An empty phrase list means "do not filter", so every title is kept.
+    Capitals, accents, and word order are ignored. "hr" does not match
+    inside another word. An empty phrase list means "do not filter".
     """
     if not phrases:
         return True
-    haystack = " ".join(title.lower().split())
-    for phrase in phrases:
-        needle = " ".join(phrase.lower().split())
-        if needle and needle in haystack:
-            return True
-    return False
+    return any(phrase_matches(title, phrase) for phrase in phrases)
+
+
+def title_is_excluded(title: str, phrases: list[str]) -> bool:
+    """True when the title contains one of the rejected words as a whole word."""
+    return any(phrase_matches(title, phrase) for phrase in phrases)
 
 
 def sort_rows(rows: list[dict]) -> list[dict]:

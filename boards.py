@@ -29,6 +29,7 @@ from listings import (
     excluded_region,
     roles_for_title,
     snippet,
+    title_is_excluded,
 )
 
 VERSION = "1.0"
@@ -177,6 +178,8 @@ def filter_board_jobs(
     for job in jobs:
         description = job.get("description") or ""
         if check_region_text and excluded_region(description, rules):
+            continue
+        if title_is_excluded(job.get("title") or "", settings.exclude_keywords or []):
             continue
         roles = roles_for_title(
             job.get("title") or "",

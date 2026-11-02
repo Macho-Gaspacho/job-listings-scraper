@@ -34,9 +34,16 @@ try:
     from config import Settings, load_config
     from daily import commit_daily_files, push_daily_commit
     from environment import python_version_problem, report_skip
-    from listings import apply_new_flags, dedupe, identity_keys, sort_rows, title_is_relevant
+    from listings import (
+        apply_new_flags,
+        dedupe,
+        identity_keys,
+        sort_rows,
+        title_is_excluded,
+        title_is_relevant,
+    )
     from save_results import load_seen, save_seen, write_daily_files, write_outputs
-    from sources import fetch_listings
+    from sources import fetch_listings, quiet_library_logs
 except ModuleNotFoundError as exc:
     if __name__ == "__main__":
         from environment import missing_package_message
@@ -56,6 +63,27 @@ def _clock_now(timezone_name: str):
     return datetime.now().astimezone()
 
 
+def configure_logging(verbose: bool = False) -> None:
+    """Show library errors only when --verbose was passed."""
+    quiet_library_logs(verbose)
+
+
+def _search_pairs(settings: Settings) -> list[tuple]:
+    """Role, place, and site combinations that will actually be requested.
+
+    A place can skip Indeed when that country is not one Indeed covers,
+    or when the remote area is a different country.
+    """
+    pairs = []
+    for role in settings.roles:
+        for place in settings.places:
+            for site in settings.sites:
+                if site == "indeed" and not place.search_indeed:
+                    continue
+                pairs.append((role, place, site))
+    return pairs
+
+
 def collect_listings(settings: Settings, fetch, pause=time.sleep) -> tuple[list[dict], int]:
     """Search every role, place, and site.
 
@@ -63,12 +91,7 @@ def collect_listings(settings: Settings, fetch, pause=time.sleep) -> tuple[list[
     fails. One failure does not throw away the listings already collected.
     The pause between searches is there so we do not hammer the sites.
     """
-    searches = [
-        (role, place, site)
-        for role in settings.roles
-        for place in settings.places
-        for site in settings.sites
-    ]
+    searches = _search_pairs(settings)
     rows: list[dict] = []
     failures = 0
     for index, (role, place, site) in enumerate(searches):
@@ -81,15 +104,27 @@ def collect_listings(settings: Settings, fetch, pause=time.sleep) -> tuple[list[
             found = []
         else:
             phrases = (settings.title_keywords or {}).get(role, [])
+            excludes = settings.exclude_keywords or []
             # Job sites return loosely related titles. When the config lists
-            # phrases for this role, keep only titles that contain one of them.
+            # phrases for this role, keep only titles that match one of them.
+            # Rejected words are whole words, so "intern" does not drop "internal".
+            before = len(found)
+            filtered = False
             if settings.require_title_match and phrases:
-                before = len(found)
                 found = [
                     row
                     for row in found
                     if title_is_relevant(row.get("title", ""), phrases)
                 ]
+                filtered = True
+            if excludes:
+                found = [
+                    row
+                    for row in found
+                    if not title_is_excluded(row.get("title", ""), excludes)
+                ]
+                filtered = True
+            if filtered:
                 print(
                     f"  Found {before}, kept {len(found)} with a matching title.",
                     flush=True,
@@ -103,11 +138,12 @@ def collect_listings(settings: Settings, fetch, pause=time.sleep) -> tuple[list[
     return dedupe(rows), failures
 
 
-def _run_search(config_path: Path, daily: bool, fetch=None, getter=None) -> int:
+def _run_search(config_path: Path, daily: bool, fetch=None, getter=None, verbose: bool = False) -> int:
     """Load a saved config, search, and write the spreadsheet.
 
     fetch(role, place, site) and getter(url) stand in for the live sites in tests.
     """
+    configure_logging(verbose)
     project_dir = Path(__file__).resolve().parent
     try:
         settings = load_config(config_path)
@@ -126,14 +162,14 @@ def _run_search(config_path: Path, daily: bool, fetch=None, getter=None) -> int:
         def run_fetch(role, place, site):
             if fetch is not None:
                 return fetch(role, place, site)
-            return fetch_listings(settings, role, place, site)
+            return fetch_listings(settings, role, place, site, verbose=verbose)
 
         aggregator_rows, aggregator_failures = collect_listings(settings, run_fetch)
     # Dedupe again across company pages, remote boards, and Indeed/LinkedIn.
     rows = dedupe(board_rows + aggregator_rows)
     rows = sort_rows(apply_new_flags(rows, seen))
     failures = board_failures + aggregator_failures
-    searches = len(settings.roles) * len(settings.places) * len(settings.sites)
+    searches = len(_search_pairs(settings))
     company_count = sum(1 for company in settings.companies or [] if company.enabled)
     attempts = searches + (company_count if settings.company_pages_enabled else 0)
     attempts += len(settings.remote_boards or [])
@@ -207,6 +243,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Answer a few questions and write config.yaml.",
     )
     parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Show detailed messages from the job sites. Leave this off for a normal run.",
+    )
+    parser.add_argument(
         "--daily",
         action="store_true",
         help=(
@@ -222,9 +263,9 @@ def main(argv: list[str] | None = None) -> int:
                 print("There is no config.yaml yet. Answer a few questions and one will be created.")
             return setup_wizard.run_wizard(
                 config_path,
-                run_search=lambda path: _run_search(Path(path), daily=args.daily),
+                run_search=lambda path: _run_search(Path(path), daily=args.daily, verbose=args.verbose),
             )
-        return _run_search(config_path, daily=args.daily)
+        return _run_search(config_path, daily=args.daily, verbose=args.verbose)
     except KeyboardInterrupt:
         print("Stopped. Results collected so far were not saved.")
         return 130

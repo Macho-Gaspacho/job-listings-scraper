@@ -50,6 +50,7 @@ def test_build_search_for_milan_on_indeed():
     assert query["distance"] == 30
     assert query["hours_old"] == 720
     assert query["results_wanted"] == 8
+    assert query["verbose"] is None
     assert "is_remote" not in query
     assert query["fetch_description"] is False
 
@@ -106,12 +107,11 @@ def test_collect_listings_keeps_going_when_one_search_fails():
     pauses = []
     rows, failures = collect_listings(settings, fetch, pause=pauses.append)
     assert failures == 1
-    # The two Indeed hits share a title and company, so they become one row.
-    # The LinkedIn hit has a different title, so it stays.
-    assert len(rows) == 2
-    indeed = next(row for row in rows if row["source"] == "indeed")
-    assert "Milan, Italy" in indeed["place_searched"]
-    assert "Remote" in indeed["place_searched"]
+    # The two Indeed hits share a title and company, but the cities differ,
+    # so they stay separate. The LinkedIn hit has a different title.
+    assert len(rows) == 3
+    indeed_places = sorted(row["place_searched"] for row in rows if row["source"] == "indeed")
+    assert indeed_places == ["Milan, Italy", "Remote"]
     assert pauses == [9, 9, 9]
     assert calls[0] == ("Product Manager", "Milan, Italy", "indeed")
 
@@ -154,3 +154,51 @@ def test_collect_listings_drops_titles_that_miss_the_role_keywords():
     rows, failures = collect_listings(settings, fetch, pause=lambda _seconds: None)
     assert failures == 0
     assert [row["title"] for row in rows] == ["Senior Product Manager"]
+
+
+def test_collect_listings_drops_excluded_words_as_whole_words():
+    settings = _settings(
+        require_title_match=False,
+        exclude_keywords=["senior", "intern"],
+        pause_seconds=0,
+    )
+    settings.places = settings.places[:1]
+    settings.sites = ["indeed"]
+
+    def fetch(role, place, site):
+        return [
+            {
+                "title": "Senior Product Manager",
+                "company": "A",
+                "location": "Milan",
+                "source": site,
+                "url": "https://example.com/senior",
+                "description": "",
+                "role_searched": role,
+                "place_searched": place.name,
+            },
+            {
+                "title": "Product Manager Intern",
+                "company": "B",
+                "location": "Milan",
+                "source": site,
+                "url": "https://example.com/intern",
+                "description": "",
+                "role_searched": role,
+                "place_searched": place.name,
+            },
+            {
+                "title": "Internal Product Manager",
+                "company": "C",
+                "location": "Milan",
+                "source": site,
+                "url": "https://example.com/internal",
+                "description": "",
+                "role_searched": role,
+                "place_searched": place.name,
+            },
+        ]
+
+    rows, failures = collect_listings(settings, fetch, pause=lambda _seconds: None)
+    assert failures == 0
+    assert [row["title"] for row in rows] == ["Internal Product Manager"]
