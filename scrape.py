@@ -12,6 +12,10 @@ To change the search later:
 To tailor a CV from one saved row:
 
     python scrape.py --cv 1 --format us_resume
+
+To answer questions and write a profile when you do not have a CV yet:
+
+    python scrape.py --cv-interview
 """
 
 from __future__ import annotations
@@ -220,6 +224,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     project_dir = Path(__file__).resolve().parent
+    from cv.presets import list_presets
+
+    known_formats = ", ".join(list_presets())
     parser = argparse.ArgumentParser(
         description="Collect job listings into a CSV file and an Excel file."
     )
@@ -248,9 +255,20 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--format",
-        default="us_resume",
-        choices=("us_resume", "uk_cv", "de_lebenslauf", "eu_europass", "it_cv", "fr_cv"),
-        help="CV preset. The default is us_resume.",
+        default=None,
+        help=(
+            "CV preset. Known formats: "
+            f"{known_formats}. "
+            "When this is omitted, the job location picks one."
+        ),
+    )
+    parser.add_argument(
+        "--cv-interview",
+        action="store_true",
+        help=(
+            "Answer plain questions and write profile/cv_profile.yaml from what you type. "
+            "Nothing is invented."
+        ),
     )
     parser.add_argument(
         "--jobs",
@@ -284,6 +302,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     try:
         args = parser.parse_args(argv)
+        if args.cv_interview:
+            return _run_interview(args, project_dir)
         if args.cv:
             return _run_cv(args, project_dir)
         if _offer_menu(argv, args):
@@ -306,7 +326,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def _offer_menu(argv, args) -> bool:
     """Ask what to do on a double-click. A scheduled run has no terminal, so it searches."""
-    if args.cv or args.setup:
+    if args.cv or args.setup or args.cv_interview:
         return False
     if args.menu:
         return True
@@ -323,6 +343,19 @@ def _cv_paths(args, project_dir: Path):
     folder = Path(args.cv_dir) if args.cv_dir else project_dir / "output" / "cv"
     on_date = date.fromisoformat(args.cv_date) if args.cv_date else None
     return jobs, profile, folder, on_date
+
+
+def _run_interview(args, project_dir: Path) -> int:
+    _jobs, profile, _folder, _on_date = _cv_paths(args, project_dir)
+    try:
+        from cv.interview import run_interview
+    except ModuleNotFoundError as exc:
+        print(
+            "Could not load the CV generator "
+            f"({exc}). Install the tools with: pip install -r requirements.txt"
+        )
+        return 1
+    return run_interview(input, print, profile)
 
 
 def _run_cv(args, project_dir: Path) -> int:

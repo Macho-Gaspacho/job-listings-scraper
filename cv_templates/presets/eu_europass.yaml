@@ -1,4 +1,11 @@
 id: eu_europass
+fallback_eu_eea: true
+fallback_words:
+  - europe
+  - european
+  - eu
+  - eea
+  - emea
 page_size: a4
 max_pages: 2
 extended_pages: 2

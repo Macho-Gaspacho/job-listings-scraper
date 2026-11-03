@@ -15,7 +15,7 @@ from docx.shared import Inches
 from cv.cli import output_filename, run_cv
 from cv.jobs import load_job_rows, select_job
 from cv.llm import rephrase_bullets
-from cv.presets import include_photo, load_preset, page_limit, personal_fields_for
+from cv.presets import include_photo, list_presets, load_preset, page_limit, personal_fields_for
 from cv.profile import ProfileError, load_profile, profile_text
 from cv.render_docx import libreoffice_pdf, render_docx
 from cv.render_text import (
@@ -232,10 +232,7 @@ def test_profile_requires_a_name(tmp_path):
         load_profile(path)
 
 
-@pytest.mark.parametrize(
-    "name",
-    ["us_resume", "uk_cv", "de_lebenslauf", "eu_europass", "it_cv", "fr_cv"],
-)
+@pytest.mark.parametrize("name", list_presets())
 def test_presets_declare_layout_photo_and_personal_rules(name):
     preset = load_preset(name)
     assert preset.page_size in {"letter", "a4"}

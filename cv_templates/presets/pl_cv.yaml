@@ -1,0 +1,60 @@
+id: pl_cv
+countries:
+  - poland
+page_size: a4
+max_pages: 2
+extended_pages: 2
+extended_after_years: 0
+photo: optional
+personal_fields:
+  - date_of_birth
+date_format: mm.yyyy
+present_label: obecnie
+chronology: reverse
+language: pl
+references_line: ""
+signature: false
+consent_line: "Wyrażam zgodę na przetwarzanie moich danych osobowych dla potrzeb niezbędnych do realizacji procesu rekrutacji zgodnie z Rozporządzeniem Parlamentu Europejskiego i Rady (UE) 2016/679"
+section_order:
+  - contact
+  - summary
+  - experience
+  - education
+  - skills
+  - languages
+  - certifications
+  - links
+  - consent
+section_titles:
+  pl:
+    contact: Kontakt
+    summary: Profil
+    experience: Doświadczenie zawodowe
+    education: Wykształcenie
+    skills: Umiejętności
+    languages: Języki
+    certifications: Certyfikaty
+    links: Linki
+    consent: Zgoda
+  en:
+    contact: Contact
+    summary: Profile
+    experience: Experience
+    education: Education
+    skills: Skills
+    languages: Languages
+    certifications: Certifications
+    links: Links
+    consent: Consent
+field_labels:
+  pl:
+    date_of_birth: Data urodzenia
+    nationality: Obywatelstwo
+    marital_status: Stan cywilny
+  en:
+    date_of_birth: Date of birth
+    nationality: Nationality
+    marital_status: Marital status
+review_notes:
+  - "Double-check: a photo is optional on a Polish CV. It is included only when the file exists and photo.include is true."
+  - "Double-check: the RODO consent sentence is printed only when gdpr_consent is true. A date of birth is printed only when personal.include is true. Confirm the sentence with the employer before you rely on it."

@@ -1,0 +1,56 @@
+id: ca_resume
+countries:
+  - canada
+page_size: letter
+max_pages: 1
+extended_pages: 2
+extended_after_years: 10
+photo: forbidden
+personal_fields: []
+date_format: mon_yyyy
+present_label: Present
+chronology: reverse
+language: en
+references_line: ""
+signature: false
+consent_line: ""
+section_order:
+  - contact
+  - summary
+  - skills
+  - experience
+  - education
+  - certifications
+  - languages
+  - links
+section_titles:
+  en:
+    contact: Contact
+    summary: Summary
+    skills: Skills
+    experience: Experience
+    education: Education
+    certifications: Certifications
+    languages: Languages
+    links: Links
+  fr:
+    contact: Coordonnées
+    summary: Profil
+    skills: Compétences
+    experience: Expérience
+    education: Formation
+    certifications: Certifications
+    languages: Langues
+    links: Liens
+field_labels:
+  en:
+    date_of_birth: Date of birth
+    nationality: Nationality
+    marital_status: Marital status
+  fr:
+    date_of_birth: Date de naissance
+    nationality: Nationalité
+    marital_status: État civil
+review_notes:
+  - "Double-check: Canadian resumes normally omit a photo, date of birth, age, marital status, and nationality. This preset drops them even if they are in your profile. Some public-sector forms ask for data this preset leaves out; add that by hand after you read the form."
+  - "Double-check: one page is the usual expectation, and two pages after about ten years. Academic CVs are often longer. The page count here is a word estimate, not a Word layout."

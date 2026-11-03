@@ -1,4 +1,8 @@
 @echo off
+rem When a terminal is open, scrape.py asks:
+rem   1. Search for jobs
+rem   2. Make a CV for one of these jobs
+rem   3. I don't have a CV yet - help me make one
 setlocal EnableExtensions
 cd /d "%~dp0"
 

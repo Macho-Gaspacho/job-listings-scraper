@@ -12,7 +12,18 @@ import yaml
 from cv.profile import Profile
 
 
-_PRESENT = {"present", "current", "now", "heute", "oggi", "aujourd'hui", "actuellement"}
+_PRESENT = {
+    "present",
+    "current",
+    "now",
+    "heute",
+    "oggi",
+    "aujourd'hui",
+    "actuellement",
+    "heden",
+    "actual",
+    "obecnie",
+}
 _MONTHS = (
     "",
     "Jan",
@@ -65,20 +76,28 @@ class Preset:
     signature: bool
     consent_line: str
     review_notes: tuple[str, ...]
+    countries: tuple[str, ...]
+    fallback_words: tuple[str, ...]
+    fallback_countries: tuple[str, ...]
+    fallback_eu_eea: bool
+    default_fallback: bool
 
 
 def presets_dir() -> Path:
     return Path(__file__).resolve().parent.parent / "cv_templates" / "presets"
 
 
-def list_presets() -> list[str]:
-    return sorted(path.stem for path in presets_dir().glob("*.yaml"))
+def list_presets(directory: Path | None = None) -> list[str]:
+    """Preset ids are the YAML file names. A new file is picked up with no code change."""
+    folder = presets_dir() if directory is None else Path(directory)
+    return sorted(path.stem for path in folder.glob("*.yaml") if path.is_file())
 
 
-def load_preset(name: str) -> Preset:
-    path = presets_dir() / f"{name}.yaml"
+def load_preset(name: str, directory: Path | None = None) -> Preset:
+    folder = presets_dir() if directory is None else Path(directory)
+    path = folder / f"{name}.yaml"
     if not path.is_file():
-        known = ", ".join(list_presets()) or "none"
+        known = ", ".join(list_presets(folder)) or "none"
         raise ValueError(f"Unknown CV format {name!r}. Known formats: {known}.")
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
@@ -113,13 +132,40 @@ def load_preset(name: str) -> Preset:
         signature=bool(data.get("signature")),
         consent_line=str(data.get("consent_line") or ""),
         review_notes=tuple(str(note) for note in (data.get("review_notes") or ())),
+        countries=_codes(data.get("countries")),
+        fallback_words=_phrases(data.get("fallback_words")),
+        fallback_countries=_codes(data.get("fallback_countries")),
+        fallback_eu_eea=bool(data.get("fallback_eu_eea")),
+        default_fallback=bool(data.get("default_fallback")),
     )
 
 
 def section_title(preset: Preset, section: str) -> str:
-    """Titles follow the preset language so a Lebenslauf stays German."""
-    titles = preset.section_titles.get(preset.language) or {}
-    return titles.get(section, section)
+    """Titles follow the preset language, then the English labels in the same file."""
+    local = preset.section_titles.get(preset.language) or {}
+    if local.get(section):
+        return local[section]
+    english = preset.section_titles.get("en") or {}
+    if english.get(section):
+        return english[section]
+    return section
+
+
+def _phrases(value: object) -> tuple[str, ...]:
+    if not value:
+        return ()
+    items = [value] if isinstance(value, str) else value
+    found = []
+    for item in items:
+        text = " ".join(str(item).split())
+        if text and text not in found:
+            found.append(text)
+    return tuple(found)
+
+
+def _codes(value: object) -> tuple[str, ...]:
+    """Country codes are stored folded so YAML can say Netherlands or netherlands."""
+    return tuple(item.casefold() for item in _phrases(value))
 
 
 def field_label(preset: Preset, field: str) -> str:

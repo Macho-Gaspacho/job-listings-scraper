@@ -104,15 +104,23 @@ When the search finishes, open `output/jobs.xlsx`. The same rows are in `output/
 
 ### Make a CV for one job
 
-After a search, you can tailor a CV to one row. The generator only uses facts you write in `profile/cv_profile.yaml`. It does not invent employers, dates, or skills. Copy `profile/cv_profile.example.yaml` to `profile/cv_profile.yaml` and fill it in. That file and `profile/photo.*` stay off git.
+If you do not have a CV yet, start here. The program asks plain questions and writes `profile/cv_profile.yaml` from what you type. You can skip any section. `no work experience yet` is a complete answer and still produces a profile. The questions cover your name, contact details, a short summary in your own words, paid work, volunteering, studies, school or university projects, informal or family work, skills (and where you used them), languages, certifications, and links. Nothing is filled in for you. If a profile is already there, the program asks before replacing it.
 
 ```bash
-python scrape.py --cv 1 --format us_resume
+python scrape.py --cv-interview
 ```
 
-`1` is the first job in `output/jobs.csv`. You can pass a job URL instead. Formats: `us_resume`, `uk_cv`, `de_lebenslauf`, `eu_europass`, `it_cv`, `fr_cv`. The files land in `output/cv/`. The design, including what each country preset leaves out, is in [docs/cv-generator-design.md](docs/cv-generator-design.md).
+You can also copy `profile/cv_profile.example.yaml` to `profile/cv_profile.yaml` and edit the facts yourself. That file and `profile/photo.*` stay off git. The generator only uses those facts. It does not invent employers, dates, or skills.
 
-Double-clicking the start file, once `config.yaml` exists, asks whether to search or make a CV. Press Enter to search. A scheduled run does not ask.
+After a search, tailor a CV to one saved job:
+
+```bash
+python scrape.py --cv 1
+```
+
+`1` is the first job in `output/jobs.csv`. You can pass a job URL instead. With no `--format`, the program suggests one from the job's country: the Netherlands uses `nl_cv`, Poland `pl_cv`, Spain `es_cv`, Canada `ca_resume`, the United States `us_resume`, and the same idea for the UK, Germany, Italy, and France. Remote or unknown places use `eu_europass` or `us_resume` from the region. `--format` overrides the suggestion. The formats are the files in `cv_templates/presets/`. The CV files land in `output/cv/`. The design, including what each country preset leaves out, is in [docs/cv-generator-design.md](docs/cv-generator-design.md).
+
+Double-clicking the start file, once `config.yaml` exists, asks whether to search, make a CV, or get help writing a first one ("I don't have a CV yet - help me make one"). Choosing "Make a CV" when `profile/cv_profile.yaml` is missing offers those questions. Press Enter on the suggested format to accept it. Press Enter on the first menu to search. A scheduled run does not ask.
 
 ### FAQ
 

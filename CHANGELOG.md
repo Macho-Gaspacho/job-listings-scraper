@@ -5,6 +5,8 @@
 ### Added
 
 - An offline CV generator tailors one saved job from facts in `profile/cv_profile.yaml`. It does not invent employers, dates, or skills. See [docs/cv-generator-design.md](docs/cv-generator-design.md). `python-docx` is the only new dependency.
+- A guided interview (`python scrape.py --cv-interview`, and the launcher line "I don't have a CV yet - help me make one") writes `profile/cv_profile.yaml` from answers you type. Every section can be skipped, including paid work.
+- CV formats are discovered from `cv_templates/presets/*.yaml`. New formats: `nl_cv`, `es_cv`, `pl_cv`, and `ca_resume`. The job location suggests a format. `--format` overrides that suggestion.
 - GitHub Actions runs the tests on Ubuntu, Windows, and macOS, for Python 3.10, 3.12, and 3.13.
 - `requirements-dev.txt` and `pyproject.toml` for the test tools. The double-click launchers still install `requirements.txt`.
 - Example searches for a nurse in the Netherlands, a warehouse worker in Poland, a graduate marketing role in Spain, remote customer support, and an accountant in Toronto.

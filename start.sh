@@ -1,6 +1,10 @@
 #!/bin/bash
 # One-command start for macOS and Linux.
 # On a Mac you can double-click start.command instead.
+# When a terminal is open, scrape.py asks:
+#   1. Search for jobs
+#   2. Make a CV for one of these jobs
+#   3. I don't have a CV yet - help me make one
 
 cd "$(dirname "$0")" || exit 1
 

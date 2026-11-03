@@ -1,4 +1,11 @@
 id: us_resume
+countries:
+  - usa
+fallback_words:
+  - north america
+fallback_countries:
+  - mexico
+default_fallback: true
 page_size: letter
 max_pages: 1
 extended_pages: 2

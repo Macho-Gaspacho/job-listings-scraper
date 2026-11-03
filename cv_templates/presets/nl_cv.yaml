@@ -1,0 +1,57 @@
+id: nl_cv
+countries:
+  - netherlands
+page_size: a4
+max_pages: 2
+extended_pages: 2
+extended_after_years: 0
+photo: optional
+personal_fields:
+  - date_of_birth
+date_format: yyyy-mm
+present_label: heden
+chronology: reverse
+language: nl
+references_line: ""
+signature: false
+consent_line: ""
+section_order:
+  - contact
+  - summary
+  - experience
+  - education
+  - skills
+  - languages
+  - certifications
+  - links
+section_titles:
+  nl:
+    contact: Contact
+    summary: Profiel
+    experience: Werkervaring
+    education: Opleiding
+    skills: Vaardigheden
+    languages: Talen
+    certifications: Certificaten
+    links: Links
+  en:
+    contact: Contact
+    summary: Profile
+    experience: Experience
+    education: Education
+    skills: Skills
+    languages: Languages
+    certifications: Certifications
+    links: Links
+field_labels:
+  nl:
+    date_of_birth: Geboortedatum
+    nationality: Nationaliteit
+    marital_status: Burgerlijke staat
+  en:
+    date_of_birth: Date of birth
+    nationality: Nationality
+    marital_status: Marital status
+review_notes:
+  - "Double-check: a Dutch CV is usually one or two pages on A4. A photo is optional and is included only when the file exists and photo.include is true."
+  - "Double-check: a date of birth is not required. It is printed only when personal.include is true. Nationality and marital status are not in this preset."

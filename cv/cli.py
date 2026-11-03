@@ -10,6 +10,7 @@ from pathlib import Path
 from cv.jobs import load_job_rows, select_job
 from cv.llm import llm_configured, rephrase_bullets
 from cv.presets import load_preset
+from cv.suggest import suggest_format
 from cv.profile import ProfileError, load_profile
 from cv.render_docx import libreoffice_pdf, render_docx
 from cv.render_text import render_cover_letter, render_html, render_markdown, render_match_report
@@ -44,6 +45,8 @@ def run_cv(
     except (OSError, LookupError) as exc:
         print(exc)
         return 1
+    if not fmt:
+        fmt = suggest_format(job)
     try:
         preset = load_preset(fmt)
     except ValueError as exc:

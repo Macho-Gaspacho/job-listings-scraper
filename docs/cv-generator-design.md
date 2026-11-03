@@ -8,7 +8,13 @@ Nothing in this feature calls a paid service. The optional model path uses an en
 
 ## Profile
 
-`profile/cv_profile.yaml` is the only source of facts. Copy `profile/cv_profile.example.yaml` and replace every value. The example is safe to commit. The real profile is not.
+`profile/cv_profile.yaml` is the only source of facts. People who already have the facts can copy `profile/cv_profile.example.yaml` and replace every value. People who do not have a CV yet can run the interview below. The example is safe to commit. The real profile is not.
+
+### Interview
+
+`python scrape.py --cv-interview` asks plain questions and writes `profile/cv_profile.yaml`. The same questions are menu item "I don't have a CV yet - help me make one" in the launcher (`start.sh`, `start.bat`, and `start.command` run that menu when a terminal is open). Choosing "Make a CV" when the profile file is missing offers the interview before it asks which job to tailor.
+
+Every section can be skipped with Enter. `no work experience yet` leaves paid work empty and still writes a valid profile. Volunteering, school or university projects, and informal or family work are stored as experience only when the person types an organisation, a title, and one fact. Studies need a school or university. A skill can include where they used it. A language answer is a number from 1 to 6 (or the phrase next to that number) and is stored as one CEFR level: 1 is A1, 2 is A2, 3 is B1, 4 is B2, 5 is C1, 6 is C2. The file contains the words the person typed. It does not contain sample employers, dates, or skills. An existing profile is left in place unless they confirm the overwrite.
 
 Git ignores:
 
@@ -32,7 +38,7 @@ Git ignores:
 | `photo.path` / `photo.include` | Optional file. `include` must be true and the file must exist. A preset can still forbid it. |
 | `personal.include` plus `date_of_birth`, `nationality`, `marital_status` | Stored only so a preset can print them. Both the preset and `personal.include` have to allow a field. |
 | `signature.include` / `signature.place` | Optional place the user wrote, plus a blank Ort/Datum line on presets that ask for one. |
-| `gdpr_consent` | Prints the Italian consent sentence only on `it_cv`. |
+| `gdpr_consent` | Prints the consent sentence on `it_cv` and `pl_cv` only. Both lines are opt-in. |
 | `references_on_request` | Prints the UK references line only on `uk_cv`. |
 | `document_language` | Stored. Phase 1 does not let it replace the preset's language, so a Lebenslauf stays German. |
 
@@ -48,18 +54,36 @@ The tailor reads the title, the description, and the language flags. The company
 
 ## Presets
 
-Presets live in `cv_templates/presets/*.yaml`. Each file sets section order, section titles per language, page size, photo policy (`forbidden`, `optional`, or `customary`), which personal fields are allowed, the date format, and the page cap.
+Presets live in `cv_templates/presets/*.yaml`. The program lists every `*.yaml` file in that folder at startup. Each file sets section order, section titles per language, page size, photo policy (`forbidden`, `optional`, or `customary`), which personal fields are allowed, the date format, and the page cap.
 
-Phase 1 renders the preset's own language. The other language maps are in the file so a later version can switch headings without inventing them.
+The rendered headings are the preset language. A missing local title uses the `en` map in the same file. The other language maps stay in the file so a later version can switch headings without inventing them.
 
 | Preset | Page | Cap | Photo | Personal fields that can print | Notes |
 | --- | --- | --- | --- | --- | --- |
-| `us_resume` | Letter | 1, or 2 when the career spans 10 years or more | Forbidden | None | Reverse chronological. Achievement bullets. |
+| `us_resume` | Letter | 1, or 2 when the career spans 10 years or more | Forbidden | None | Reverse chronological. Achievement bullets. Default when the place is unknown, remote with no region, or outside Europe. |
 | `uk_cv` | A4 | 2 | Forbidden | None | Summary heading is "Personal statement". References line only if opted in. |
 | `de_lebenslauf` | A4 | 2 | Customary, still opt-in | `date_of_birth` only, and only if opted in | Headings: Berufserfahrung, Ausbildung, Kenntnisse. Optional Ort/Datum line. |
-| `eu_europass` | A4 | 2 | Optional | `date_of_birth`, `nationality`, if opted in | One CEFR column. Not the official Europass PDF. |
+| `eu_europass` | A4 | 2 | Optional | `date_of_birth`, `nationality`, if opted in | One CEFR column. Suggested for other EU/EEA countries and for remote Europe. Not the official Europass PDF. |
 | `it_cv` | A4 | 2 | Optional | `date_of_birth`, if opted in | GDPR sentence only when `gdpr_consent` is true. |
 | `fr_cv` | A4 | 2 | Optional | `date_of_birth`, if opted in | Photo and date of birth stay optional. |
+| `nl_cv` | A4 | 2 | Optional | `date_of_birth` only, and only if opted in | Dutch headings (Werkervaring, Opleiding, Vaardigheden). A date of birth is not required. |
+| `es_cv` | A4 | 2 | Customary, still opt-in | `date_of_birth` only, and only if opted in | Spanish headings (Experiencia profesional, Formación, Competencias). A photo is common and still optional. |
+| `pl_cv` | A4 | 2 | Optional | `date_of_birth` only, and only if opted in | Polish headings (Doświadczenie zawodowe, Wykształcenie, Umiejętności). The RODO sentence prints only when `gdpr_consent` is true. |
+| `ca_resume` | Letter | 1, or 2 when the career spans 10 years or more | Forbidden | None | Same personal-data rule as `us_resume`: photo, date of birth, marital status, and nationality are dropped. |
+
+### Add a format
+
+Adding a country is a new YAML file. Copy a nearby preset to `cv_templates/presets/<id>.yaml`.
+
+- The file name is the `--format` id. Help text and unknown-format errors list whatever files are in the folder.
+- Put section titles in the local language and an `en` map. A heading that exists only in `en` is used as the fallback.
+- Set `countries` to codes from `regions.canonical_country`, such as `netherlands` or `canada`. A job in that country suggests this file.
+- For a region that should share an existing file, set `fallback_words` (such as `europe` or `north america`), `fallback_countries`, or `fallback_eu_eea: true` on that file. `us_resume` sets `default_fallback: true` for an unknown place or a remote job with no region.
+- A named country on the job row wins over a region fallback. `--format` wins over both.
+
+### Which format is suggested
+
+`cv/suggest.py` reads the job's `location`, then `place_searched` when the location is only a remote word such as `Remote` or `Worldwide`. Country names go through `regions.country_from_places`, so `Holland`, `España`, and `United States` match the same codes as the preset files. The suggestion is printed in the launcher; Enter accepts it.
 
 `marital_status` is in the profile schema and on no preset. Older templates in several countries asked for it. This generator does not print it unless a future preset lists the field and the user opts in.
 
@@ -67,7 +91,7 @@ The Europass language block shows the single CEFR level from the profile. It doe
 
 Photo rules:
 
-- `forbidden`: dropped even when a file is present and `photo.include` is true. Used by `us_resume` and `uk_cv`.
+- `forbidden`: dropped even when a file is present and `photo.include` is true. Used by `us_resume`, `uk_cv`, and `ca_resume`.
 - `optional` and `customary`: included only when `photo.include` is true and the file exists. Customary means readers often expect a photo. It does not mean the file is required. German law (AGG) is why a photo cannot be required; the preset still will not invent one.
 
 ### Conventions to double-check
@@ -80,6 +104,10 @@ These are ordinary practice, not legal advice, and they vary by industry, employ
 - **Europass.** The official template changes. Two pages is a reading target. Date of birth and nationality are optional on the official form. Marital status is not an official Europass field.
 - **Italy.** A photo is common. The sentence `Autorizzo il trattamento dei dati personali ai sensi del Regolamento UE 2016/679` is widely used and the wording is not unique. Confirm it before you rely on it.
 - **France.** A photo is common and cannot be required. Date of birth is often omitted now. Concours and academic CVs use their own forms.
+- **Netherlands.** One or two pages on A4. A photo is optional. A date of birth is not required and prints only when `personal.include` is true.
+- **Spain.** A photo is common and still optional. A date of birth is not required.
+- **Poland.** A photo is optional. The sentence `Wyrażam zgodę na przetwarzanie moich danych osobowych dla potrzeb niezbędnych do realizacji procesu rekrutacji zgodnie z Rozporządzeniem Parlamentu Europejskiego i Rady (UE) 2016/679` prints only when `gdpr_consent` is true. Confirm the wording before you rely on it.
+- **Canada.** Letter size. Photo, date of birth, marital status, and nationality are omitted, including when they are filled in on the profile. One page is the usual target; two pages after about ten years.
 
 ## Tailoring
 
@@ -142,11 +170,13 @@ The cover letter names the vacancy (title and company from the job row) and then
 ## Command
 
 ```bash
+python scrape.py --cv-interview
+python scrape.py --cv 1
 python scrape.py --cv 1 --format us_resume
 python scrape.py --cv https://example.com/jobs/nurse --format de_lebenslauf --cover-letter
 ```
 
-`--format` accepts `us_resume`, `uk_cv`, `de_lebenslauf`, `eu_europass`, `it_cv`, and `fr_cv`.
+`--cv-interview` writes the profile. `--format` is optional. When it is omitted, the job location chooses a preset from the YAML files in `cv_templates/presets/`. Passing `--format` uses that file instead. An unknown id prints the formats currently in the folder.
 
 `--jobs` defaults to `output/jobs.csv`. `--profile` defaults to `profile/cv_profile.yaml`. `--cv-date` sets the date in the file name (default: today).
 
@@ -156,9 +186,10 @@ On a double-click, once `config.yaml` exists and a terminal is attached, the lau
 What do you want to do?
   1. Search for jobs
   2. Make a CV for one of these jobs
+  3. I don't have a CV yet - help me make one
 ```
 
-Enter keeps the old behaviour and searches. A scheduled run has no terminal, so it searches and does not wait for a question. The first run, with no `config.yaml`, still opens the setup wizard.
+Enter keeps the old behaviour and searches. Option 2 with no profile offers the interview, then asks for a row. The format question shows the suggestion in brackets; Enter accepts it. A scheduled run has no terminal, so it searches and does not wait for a question. The first run, with no `config.yaml`, still opens the setup wizard.
 
 ## Privacy
 
@@ -166,4 +197,4 @@ The profile, the photo, the spreadsheet, and the generated CV stay on this compu
 
 ## What phase 1 does not do
 
-It does not edit the profile in a form, clone the official Europass PDF, paginate like Word, or rewrite the summary. It does not add a skill because the job asked for it. Warnings from the generator are in English even when the CV headings are not.
+The interview writes a profile from answers. It does not offer a form, clone the official Europass PDF, paginate like Word, or rewrite the summary. It does not add a skill because the job asked for it. Warnings from the generator are in English even when the CV headings are not.

@@ -18,6 +18,18 @@ On Windows, create the environment with `py -m venv .venv`, activate it with `.v
 
 `requirements.txt` is what the double-click launchers install. `requirements-dev.txt` adds the test tools on top of that. Beginners do not need the dev file.
 
+## Add a CV format
+
+Add one file, `cv_templates/presets/<id>.yaml`. The file name is the id passed to `--format`, and the help text lists it on the next run. No Python edit is required.
+
+Copy a nearby preset and set:
+
+- `page_size` (`a4` or `letter`), `photo` (`forbidden`, `optional`, or `customary`), and `personal_fields` (only fields that may print, and only when the person opted in)
+- `language`, plus `section_titles` in that language and in `en` (English is the fallback when a local title is missing)
+- `countries`: the country codes `regions.canonical_country` returns, such as `netherlands` or `canada`
+
+To be suggested for places that have no dedicated file, set `fallback_words` (for example `europe`), `fallback_countries`, or `fallback_eu_eea: true`. One preset in the folder should set `default_fallback: true`. That file is used when the location is unknown or only says remote.
+
 ## What to leave out of a commit
 
 - `config.yaml` and `config.backup.yaml` — your search
