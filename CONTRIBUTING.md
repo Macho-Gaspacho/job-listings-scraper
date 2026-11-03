@@ -22,6 +22,7 @@ On Windows, create the environment with `py -m venv .venv`, activate it with `.v
 
 - `config.yaml` and `config.backup.yaml` — your search
 - `data/` and `output/` — jobs already seen, and the spreadsheet
+- `profile/cv_profile.yaml` and `profile/photo.*` — your CV facts and photo
 - `.venv/`
 
 Those paths are already in `.gitignore`. Do not force-add them. The optional script in `examples/automation/daily_git_commit.py` publishes that history and refuses to run unless you opt in. Do not use it on a public repository.

@@ -1,0 +1,43 @@
+id: uk_cv
+page_size: a4
+max_pages: 2
+extended_pages: 2
+extended_after_years: 0
+photo: forbidden
+personal_fields: []
+date_format: month_yyyy
+present_label: Present
+chronology: reverse
+language: en
+references_line: References available on request
+signature: false
+consent_line: ""
+section_order:
+  - contact
+  - summary
+  - experience
+  - education
+  - skills
+  - certifications
+  - languages
+  - links
+  - references
+section_titles:
+  en:
+    contact: Contact
+    summary: Personal statement
+    experience: Experience
+    education: Education
+    skills: Skills
+    certifications: Certifications
+    languages: Languages
+    links: Links
+    references: References
+field_labels:
+  en:
+    date_of_birth: Date of birth
+    nationality: Nationality
+    marital_status: Marital status
+review_notes:
+  - "Double-check: a modern UK CV is usually two pages on A4, without a photo or a date of birth. Academic CVs and some public-sector forms differ. Equality Act norms are the reason this preset drops the photo and date of birth."
+  - "Double-check: 'References available on request' is optional. This line is included only when references_on_request is true. Referee names are never invented."

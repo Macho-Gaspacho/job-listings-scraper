@@ -43,7 +43,7 @@ Remote boards are read from their public feeds. When a result comes from Remote 
 
 ## Privacy
 
-A normal run keeps every file on your computer: the spreadsheet, the list of jobs already seen, and `config.yaml`. Nothing is uploaded.
+A normal run keeps every file on your computer: the spreadsheet, the list of jobs already seen, `config.yaml`, and any CV profile. Nothing is uploaded. The CV generator does not send your photo, date of birth, or contact details anywhere unless you set your own model key, and even then those fields are left out of the request.
 
 Do not commit `config.yaml`, `data/`, or `output/` to a public repository. Those files are your job search. Git already ignores them. An optional script can publish them, and it refuses to run unless you opt in. Read the warning in [examples/automation/daily_git_commit.py](examples/automation/daily_git_commit.py) before you consider it. Only use that script with a private repository.
 
@@ -102,6 +102,18 @@ A fresh download has no `config.yaml`, so the first run asks these questions and
 
 When the search finishes, open `output/jobs.xlsx`. The same rows are in `output/jobs.csv`. The first run can take several minutes.
 
+### Make a CV for one job
+
+After a search, you can tailor a CV to one row. The generator only uses facts you write in `profile/cv_profile.yaml`. It does not invent employers, dates, or skills. Copy `profile/cv_profile.example.yaml` to `profile/cv_profile.yaml` and fill it in. That file and `profile/photo.*` stay off git.
+
+```bash
+python scrape.py --cv 1 --format us_resume
+```
+
+`1` is the first job in `output/jobs.csv`. You can pass a job URL instead. Formats: `us_resume`, `uk_cv`, `de_lebenslauf`, `eu_europass`, `it_cv`, `fr_cv`. The files land in `output/cv/`. The design, including what each country preset leaves out, is in [docs/cv-generator-design.md](docs/cv-generator-design.md).
+
+Double-clicking the start file, once `config.yaml` exists, asks whether to search or make a CV. Press Enter to search. A scheduled run does not ask.
+
 ### FAQ
 
 **Python was not found, or `python` is not recognized**
@@ -132,7 +144,7 @@ See [docs/scheduling.md](docs/scheduling.md). That runs the same search on your 
 
 **How do I change the search later?**
 
-Double-clicking the start file runs the search you already saved. To change the titles or the city, open a terminal in the project folder and run:
+Double-clicking the start file asks whether to search or make a CV, then runs the search you already saved if you press Enter. To change the titles or the city, open a terminal in the project folder and run:
 
 ```bash
 .venv/bin/python scrape.py --setup

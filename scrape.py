@@ -8,6 +8,10 @@ The first run asks a few questions and writes config.yaml.
 To change the search later:
 
     python scrape.py --setup
+
+To tailor a CV from one saved row:
+
+    python scrape.py --cv 1 --format us_resume
 """
 
 from __future__ import annotations
@@ -15,7 +19,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 if __name__ == "__main__" and sys.version_info < (3, 10):
@@ -111,17 +115,11 @@ def collect_listings(settings: Settings, fetch, pause=time.sleep) -> tuple[list[
             before = len(found)
             filtered = False
             if settings.require_title_match and phrases:
-                found = [
-                    row
-                    for row in found
-                    if title_is_relevant(row.get("title", ""), phrases)
-                ]
+                found = [row for row in found if title_is_relevant(row.get("title", ""), phrases)]
                 filtered = True
             if excludes:
                 found = [
-                    row
-                    for row in found
-                    if not title_is_excluded(row.get("title", ""), excludes)
+                    row for row in found if not title_is_excluded(row.get("title", ""), excludes)
                 ]
                 filtered = True
             limited = filters_active(settings.filters)
@@ -163,6 +161,7 @@ def _run_search(config_path: Path, fetch=None, getter=None, verbose: bool = Fals
     aggregator_rows: list[dict] = []
     aggregator_failures = 0
     if settings.sites:
+
         def run_fetch(role, place, site):
             if fetch is not None:
                 return fetch(role, place, site)
@@ -239,12 +238,62 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Show detailed messages from the job sites. Leave this off for a normal run.",
     )
+    parser.add_argument(
+        "--cv",
+        metavar="ROW_OR_URL",
+        help=(
+            "Write a CV for one saved job. Pass the row number (1 is the first job) "
+            "or the job URL. Uses profile/cv_profile.yaml."
+        ),
+    )
+    parser.add_argument(
+        "--format",
+        default="us_resume",
+        choices=("us_resume", "uk_cv", "de_lebenslauf", "eu_europass", "it_cv", "fr_cv"),
+        help="CV preset. The default is us_resume.",
+    )
+    parser.add_argument(
+        "--jobs",
+        default=None,
+        help="Jobs CSV to read. The default is output/jobs.csv.",
+    )
+    parser.add_argument(
+        "--profile",
+        default=None,
+        help="CV profile YAML. The default is profile/cv_profile.yaml.",
+    )
+    parser.add_argument(
+        "--cv-dir",
+        default=None,
+        help="Folder for the generated CV. The default is output/cv.",
+    )
+    parser.add_argument(
+        "--cv-date",
+        default=None,
+        help="Date in the file name, YYYY-MM-DD. The default is today.",
+    )
+    parser.add_argument(
+        "--cover-letter",
+        action="store_true",
+        help="Also write a cover-letter skeleton next to the CV.",
+    )
+    parser.add_argument(
+        "--menu",
+        action="store_true",
+        help="Ask whether to search or make a CV. A double-click does this when a terminal is open.",
+    )
     try:
         args = parser.parse_args(argv)
+        if args.cv:
+            return _run_cv(args, project_dir)
+        if _offer_menu(argv, args):
+            return _run_menu(args, project_dir)
         config_path = Path(args.config)
         if args.setup or not config_path.exists():
             if not config_path.exists():
-                print("There is no config.yaml yet. Answer a few questions and one will be created.")
+                print(
+                    "There is no config.yaml yet. Answer a few questions and one will be created."
+                )
             return setup_wizard.run_wizard(
                 config_path,
                 run_search=lambda path: _run_search(Path(path), verbose=args.verbose),
@@ -253,6 +302,84 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         print("Stopped. Results collected so far were not saved.")
         return 130
+
+
+def _offer_menu(argv, args) -> bool:
+    """Ask what to do on a double-click. A scheduled run has no terminal, so it searches."""
+    if args.cv or args.setup:
+        return False
+    if args.menu:
+        return True
+    if argv is not None:
+        return False
+    if not sys.stdin.isatty():
+        return False
+    return Path(args.config).exists()
+
+
+def _cv_paths(args, project_dir: Path):
+    jobs = Path(args.jobs) if args.jobs else project_dir / "output" / "jobs.csv"
+    profile = Path(args.profile) if args.profile else project_dir / "profile" / "cv_profile.yaml"
+    folder = Path(args.cv_dir) if args.cv_dir else project_dir / "output" / "cv"
+    on_date = date.fromisoformat(args.cv_date) if args.cv_date else None
+    return jobs, profile, folder, on_date
+
+
+def _run_cv(args, project_dir: Path) -> int:
+    jobs, profile, folder, on_date = _cv_paths(args, project_dir)
+    try:
+        from cv.cli import run_cv
+    except ModuleNotFoundError as exc:
+        print(
+            "Could not load the CV generator "
+            f"({exc}). Install the tools with: pip install -r requirements.txt"
+        )
+        return 1
+    return run_cv(
+        args.cv,
+        args.format,
+        jobs,
+        profile,
+        folder,
+        cover=args.cover_letter,
+        today=on_date,
+    )
+
+
+def _run_menu(args, project_dir: Path) -> int:
+    jobs, profile, folder, on_date = _cv_paths(args, project_dir)
+    try:
+        from cv.wizard import run_launcher_menu
+    except ModuleNotFoundError as exc:
+        print(
+            "Could not load the CV generator "
+            f"({exc}). Install the tools with: pip install -r requirements.txt"
+        )
+        return 1
+
+    def run_search() -> int:
+        config_path = Path(args.config)
+        if args.setup or not config_path.exists():
+            if not config_path.exists():
+                print(
+                    "There is no config.yaml yet. Answer a few questions and one will be created."
+                )
+            return setup_wizard.run_wizard(
+                config_path,
+                run_search=lambda path: _run_search(Path(path), verbose=args.verbose),
+            )
+        return _run_search(config_path, verbose=args.verbose)
+
+    return run_launcher_menu(
+        input,
+        print,
+        jobs,
+        profile,
+        folder,
+        run_search,
+        today=on_date,
+        default_format=args.format,
+    )
 
 
 if __name__ == "__main__":

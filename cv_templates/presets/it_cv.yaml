@@ -1,0 +1,58 @@
+id: it_cv
+page_size: a4
+max_pages: 2
+extended_pages: 2
+extended_after_years: 0
+photo: optional
+personal_fields:
+  - date_of_birth
+date_format: mm/yyyy
+present_label: attuale
+chronology: reverse
+language: it
+references_line: ""
+signature: false
+consent_line: "Autorizzo il trattamento dei dati personali ai sensi del Regolamento UE 2016/679"
+section_order:
+  - contact
+  - summary
+  - experience
+  - education
+  - skills
+  - languages
+  - certifications
+  - links
+  - consent
+section_titles:
+  it:
+    contact: Contatto
+    summary: Profilo
+    experience: Esperienza professionale
+    education: Istruzione
+    skills: Competenze
+    languages: Lingue
+    certifications: Certificazioni
+    links: Collegamenti
+    consent: Consenso
+  en:
+    contact: Contact
+    summary: Profile
+    experience: Experience
+    education: Education
+    skills: Skills
+    languages: Languages
+    certifications: Certifications
+    links: Links
+    consent: Consent
+field_labels:
+  it:
+    date_of_birth: Data di nascita
+    nationality: Nazionalità
+    marital_status: Stato civile
+  en:
+    date_of_birth: Date of birth
+    nationality: Nationality
+    marital_status: Marital status
+review_notes:
+  - "Double-check: a photo is common on an Italian CV and is not mandatory. It is included only when the file exists and photo.include is true."
+  - "Double-check: the GDPR sentence is a widely used formula, and wording varies. It is printed only when gdpr_consent is true. Date of birth is printed only when personal.include is true. Confirm both with the employer or a current public template before you rely on them."

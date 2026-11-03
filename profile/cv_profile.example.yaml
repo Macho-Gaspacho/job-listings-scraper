@@ -1,0 +1,78 @@
+# Copy this file to profile/cv_profile.yaml and replace every fact with your own.
+# The generator can only select, reorder, shorten, and rephrase what you write here.
+# It will not invent employers, dates, skills, degrees, or certifications.
+# profile/cv_profile.yaml and profile/photo.* are gitignored.
+
+contact:
+  full_name: Mina Ortega
+  email: mina.ortega@example.com
+  phone: "+1-555-0100"
+  location: Berlin
+
+summary: >
+  Ward nurse who writes short Python notes so the next shift can see what changed.
+
+photo:
+  path: profile/photo.jpg
+  include: false
+
+personal:
+  include: false
+  date_of_birth: "1988-04-12"
+  nationality: ""
+  marital_status: ""
+
+signature:
+  include: false
+  place: ""
+
+gdpr_consent: false
+references_on_request: false
+document_language: en
+
+experience:
+  - employer: Harbor Clinic
+    title: Nurse
+    location: Berlin
+    start: "2019-03"
+    end: present
+    bullets:
+      - "Cared for 8 patients on a medical ward and wrote the handover for the next shift."
+      - "Taught 4 new nurses to use the ward's Python handover notes."
+  - employer: City Hospital
+    title: Nurse
+    location: Madrid
+    start: "2014-06"
+    end: "2019-02"
+    bullets:
+      - "Supported a 20-bed medical ward and recorded vital signs at the start of each shift."
+
+education:
+  - institution: City Hospital School
+    degree: Diploma
+    field: Nursing
+    start: "2011"
+    end: "2014"
+
+skills:
+  - name: Python
+    evidence: "Wrote Python handover notes used by the Harbor Clinic ward."
+  - name: Patient handover
+    evidence: "Wrote a written handover at the end of each shift at Harbor Clinic."
+
+languages:
+  - name: English
+    level: C1
+  - name: German
+    level: B2
+  - name: Spanish
+    level: C2
+
+certifications:
+  - name: Ward Mentor
+    issuer: Harbor Clinic
+    date: "2021-06"
+
+links:
+  - label: Portfolio
+    url: https://example.com/mina

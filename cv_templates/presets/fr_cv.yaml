@@ -1,0 +1,55 @@
+id: fr_cv
+page_size: a4
+max_pages: 2
+extended_pages: 2
+extended_after_years: 0
+photo: optional
+personal_fields:
+  - date_of_birth
+date_format: mm/yyyy
+present_label: aujourd'hui
+chronology: reverse
+language: fr
+references_line: ""
+signature: false
+consent_line: ""
+section_order:
+  - contact
+  - summary
+  - experience
+  - education
+  - skills
+  - languages
+  - certifications
+  - links
+section_titles:
+  fr:
+    contact: Contact
+    summary: Profil
+    experience: Expérience professionnelle
+    education: Formation
+    skills: Compétences
+    languages: Langues
+    certifications: Certifications
+    links: Liens
+  en:
+    contact: Contact
+    summary: Profile
+    experience: Experience
+    education: Education
+    skills: Skills
+    languages: Languages
+    certifications: Certifications
+    links: Links
+field_labels:
+  fr:
+    date_of_birth: Date de naissance
+    nationality: Nationalité
+    marital_status: Situation familiale
+  en:
+    date_of_birth: Date of birth
+    nationality: Nationality
+    marital_status: Marital status
+review_notes:
+  - "Double-check: a photo is common on a French CV and cannot be required. Anti-discrimination rules are why photo.include stays optional. Date of birth is printed only when personal.include is true; many employers no longer expect it."
+  - "Double-check: public-sector concours and academic CVs follow their own forms. Confirm the posting before you add nationality or family status by hand. This preset does not print them."

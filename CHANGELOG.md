@@ -4,6 +4,7 @@
 
 ### Added
 
+- An offline CV generator tailors one saved job from facts in `profile/cv_profile.yaml`. It does not invent employers, dates, or skills. See [docs/cv-generator-design.md](docs/cv-generator-design.md). `python-docx` is the only new dependency.
 - GitHub Actions runs the tests on Ubuntu, Windows, and macOS, for Python 3.10, 3.12, and 3.13.
 - `requirements-dev.txt` and `pyproject.toml` for the test tools. The double-click launchers still install `requirements.txt`.
 - Example searches for a nurse in the Netherlands, a warehouse worker in Poland, a graduate marketing role in Spain, remote customer support, and an accountant in Toronto.

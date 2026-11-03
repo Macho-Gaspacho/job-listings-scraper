@@ -56,7 +56,7 @@ echo.
 ".venv\Scripts\python.exe" scrape.py
 set "STATUS=%errorlevel%"
 echo.
-if "%STATUS%"=="0" echo Done. Open output\jobs.xlsx to see the jobs.
+if "%STATUS%"=="0" echo Done. Open output\jobs.xlsx for jobs, or output\cv for a CV.
 if not "%STATUS%"=="0" echo The search stopped. Read the messages above.
 pause
 exit /b %STATUS%

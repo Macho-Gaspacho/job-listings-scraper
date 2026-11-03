@@ -1,0 +1,71 @@
+id: eu_europass
+page_size: a4
+max_pages: 2
+extended_pages: 2
+extended_after_years: 0
+photo: optional
+personal_fields:
+  - date_of_birth
+  - nationality
+date_format: yyyy-mm
+present_label: Present
+chronology: reverse
+language: en
+references_line: ""
+signature: false
+consent_line: ""
+section_order:
+  - contact
+  - summary
+  - experience
+  - education
+  - languages
+  - skills
+  - certifications
+  - links
+section_titles:
+  en:
+    contact: Personal information
+    summary: About me
+    experience: Work experience
+    education: Education and training
+    languages: Language skills
+    skills: Skills
+    certifications: Certificates
+    links: Links
+  de:
+    contact: Persönliche Daten
+    summary: Über mich
+    experience: Berufserfahrung
+    education: Bildung und Ausbildung
+    languages: Sprachkenntnisse
+    skills: Kenntnisse
+    certifications: Zertifikate
+    links: Links
+  fr:
+    contact: Informations personnelles
+    summary: À propos de moi
+    experience: Expérience professionnelle
+    education: Éducation et formation
+    languages: Compétences linguistiques
+    skills: Compétences
+    certifications: Certificats
+    links: Liens
+  it:
+    contact: Informazioni personali
+    summary: Su di me
+    experience: Esperienza professionale
+    education: Istruzione e formazione
+    languages: Competenze linguistiche
+    skills: Competenze
+    certifications: Certificati
+    links: Collegamenti
+field_labels:
+  en:
+    date_of_birth: Date of birth
+    nationality: Nationality
+    marital_status: Marital status
+review_notes:
+  - "Double-check: Europass is a recommended structure, not a law, and the official template changes. Two pages is a common reading target. This preset does not claim to be the official Europass PDF."
+  - "Double-check: date of birth and nationality are optional Europass fields. They are printed only when personal.include is true. Marital status is not an official Europass field and is not included."
+  - "Double-check: the language grid shows the single CEFR level you wrote. Listening, reading, and speaking are not copied from that one level, because that would invent five assessments."

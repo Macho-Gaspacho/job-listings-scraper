@@ -1,0 +1,59 @@
+id: de_lebenslauf
+page_size: a4
+max_pages: 2
+extended_pages: 2
+extended_after_years: 0
+photo: customary
+personal_fields:
+  - date_of_birth
+date_format: mm.yyyy
+present_label: heute
+chronology: reverse
+language: de
+references_line: ""
+signature: true
+consent_line: ""
+section_order:
+  - contact
+  - summary
+  - experience
+  - education
+  - skills
+  - languages
+  - certifications
+  - links
+  - signature
+section_titles:
+  de:
+    contact: Kontakt
+    summary: Profil
+    experience: Berufserfahrung
+    education: Ausbildung
+    skills: Kenntnisse
+    languages: Sprachen
+    certifications: Weiterbildung
+    links: Links
+    signature: Unterschrift
+  en:
+    contact: Contact
+    summary: Profile
+    experience: Experience
+    education: Education
+    skills: Skills
+    languages: Languages
+    certifications: Training
+    links: Links
+    signature: Signature
+field_labels:
+  de:
+    date_of_birth: Geburtsdatum
+    nationality: Staatsangehörigkeit
+    marital_status: Familienstand
+  en:
+    date_of_birth: Date of birth
+    nationality: Nationality
+    marital_status: Marital status
+review_notes:
+  - "Double-check: a professional photo is customary on a German Lebenslauf, but the Allgemeines Gleichbehandlungsgesetz (AGG) means an employer cannot require one. This preset includes a photo only when the file exists and photo.include is true."
+  - "Double-check: date of birth is still common and increasingly omitted. It is printed only when personal.include is true. Nationality and marital status are not in this preset; older templates used them, and you should add them only when a specific form asks."
+  - "Double-check: Ort, Datum, and a signature line are optional. The line is a blank for you to sign. The generator does not invent a city or a signing date. Public-sector applications (öffentlicher Dienst) sometimes ask for more personal data than this preset includes."

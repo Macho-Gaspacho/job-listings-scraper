@@ -9,6 +9,7 @@ dependencies = [
   "python-jobspy==1.4.0",
   "PyYAML==6.0.3",
   "openpyxl==3.1.5",
+  "python-docx==1.2.0",
 ]
 
 [project.optional-dependencies]

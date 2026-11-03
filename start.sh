@@ -72,7 +72,7 @@ echo
 status=$?
 echo
 if [ "$status" -eq 0 ]; then
-  echo "Done. Open output/jobs.xlsx to see the jobs."
+  echo "Done. Open output/jobs.xlsx for jobs, or output/cv for a CV."
 else
   echo "The search stopped. Read the messages above."
 fi

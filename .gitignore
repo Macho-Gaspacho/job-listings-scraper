@@ -18,3 +18,7 @@ output/
 # Your own search. The first run writes this. Examples live in examples/.
 config.yaml
 config.backup.yaml
+
+# Your CV facts and photo. The example profile is safe to commit.
+profile/cv_profile.yaml
+profile/photo.*
