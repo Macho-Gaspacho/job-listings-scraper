@@ -24,6 +24,7 @@
 ### Fixed
 
 - GitHub Actions can import the project modules when it runs `pytest -q`. `pythonpath = ["."]` in `pyproject.toml` puts the repo root on the import path.
+- The setup wizard names the launcher for this computer: `start.bat` on Windows, `start.command` on macOS, and `start.sh` on Linux. Tests read the executable bit of `start.sh` and `start.command` from the mode git recorded, so that check works on Windows too.
 
 ### Security
 

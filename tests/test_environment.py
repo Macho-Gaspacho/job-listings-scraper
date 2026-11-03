@@ -98,6 +98,8 @@ def test_a_certificate_failure_during_search_is_explained_once(capsys):
 def test_launchers_prepare_a_venv_and_can_be_double_clicked():
     import os
     import stat
+    import subprocess
+    import sys
 
     root = Path(__file__).resolve().parents[1]
     shell = (root / "start.sh").read_text(encoding="utf-8")
@@ -111,7 +113,22 @@ def test_launchers_prepare_a_venv_and_can_be_double_clicked():
     assert "scrape.py" in bat
     assert ".venv" in bat
     assert "start.sh" in command
+    # Windows checkout does not keep a Unix executable bit. The mode git
+    # recorded (100755) is the same on every OS.
+    recorded = subprocess.run(
+        ["git", "ls-files", "-s", "--", "start.sh", "start.command"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    modes = {}
+    for line in recorded.stdout.splitlines():
+        mode, _blob, _stage, path = line.split(maxsplit=3)
+        modes[path.replace("\\", "/")] = mode
     for name in ("start.sh", "start.command"):
-        mode = (root / name).stat().st_mode
-        assert mode & stat.S_IXUSR
-        assert os.access(root / name, os.X_OK)
+        assert modes[name] == "100755"
+        if sys.platform != "win32":
+            file_mode = (root / name).stat().st_mode
+            assert file_mode & stat.S_IXUSR
+            assert os.access(root / name, os.X_OK)

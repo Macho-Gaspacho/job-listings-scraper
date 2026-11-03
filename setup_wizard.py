@@ -93,7 +93,9 @@ def launcher_name() -> str:
     """The double-click file for this computer."""
     if sys.platform == "win32":
         return "start.bat"
-    return "start.command"
+    if sys.platform == "darwin":
+        return "start.command"
+    return "start.sh"
 
 
 def split_csv(raw: str) -> list[str]:

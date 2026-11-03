@@ -96,7 +96,7 @@ def test_wizard_writes_a_config_from_answers(tmp_path):
     assert settings.title_keywords["Software Engineer"] == ["software engineer", "backend", "python"]
     assert settings.title_keywords["Data Analyst"] == ["data analyst", "backend", "python"]
     assert settings.exclude_keywords == ["senior", "intern"]
-    assert "Next time just double-click start.command" in script.text
+    assert f"Next time just double-click {launcher_name()}" in script.text
     assert "When you are ready, run: python scrape.py" not in script.text
     assert "python scrape.py --setup" in config.read_text(encoding="utf-8")
 
@@ -137,11 +137,57 @@ def test_resolve_remote_area_accepts_countries_and_linkedin_regions():
     assert resolve_remote_area("a nearby village") is None
 
 
-def test_launcher_name_follows_the_operating_system(monkeypatch):
-    monkeypatch.setattr("setup_wizard.sys.platform", "win32")
-    assert launcher_name() == "start.bat"
-    monkeypatch.setattr("setup_wizard.sys.platform", "darwin")
-    assert launcher_name() == "start.command"
+@pytest.mark.parametrize(
+    ("platform_name", "launcher"),
+    [
+        ("win32", "start.bat"),
+        ("darwin", "start.command"),
+        ("linux", "start.sh"),
+    ],
+)
+def test_launcher_name_follows_the_operating_system(monkeypatch, platform_name, launcher):
+    monkeypatch.setattr("setup_wizard.sys.platform", platform_name)
+    assert launcher_name() == launcher
+
+
+@pytest.mark.parametrize(
+    ("platform_name", "launcher"),
+    [
+        ("win32", "start.bat"),
+        ("darwin", "start.command"),
+        ("linux", "start.sh"),
+    ],
+)
+def test_wizard_names_the_launcher_for_this_operating_system(
+    tmp_path, monkeypatch, platform_name, launcher
+):
+    monkeypatch.setattr("setup_wizard.sys.platform", platform_name)
+
+    def fail_if_search_starts(_path: Path) -> int:
+        raise AssertionError("wizard started a search")
+
+    script, _config = _run(
+        tmp_path,
+        [
+            "Nurse",
+            "Italy",
+            "n",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "n",
+        ],
+        run_search=fail_if_search_starts,
+    )
+    assert f"Next time just double-click {launcher}" in script.text
 
 
 @pytest.mark.parametrize(
@@ -194,7 +240,7 @@ def test_wizard_country_wide_search_keeps_local_nurse_titles(
     assert "starter set" in script.text
     assert "Press Enter for 20" in script.text
     assert "Press Enter for 14" in script.text
-    assert "Next time just double-click start.command" in script.text
+    assert f"Next time just double-click {launcher_name()}" in script.text
 
 
 def test_wizard_leaves_indeed_off_for_a_country_it_does_not_cover(tmp_path):
