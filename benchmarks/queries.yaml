@@ -1,0 +1,56 @@
+# Fixed benchmark. Do not edit without an explicit instruction in a prompt.
+# relevant_title_phrases: a row counts as relevant when its title contains one of these
+# phrases (whole words, casefold, accents ignored) AND its location passes expected_countries.
+# expected_countries: canonical country keys used in regions.py; "remote_eu" accepts
+# remote rows whose location is blank, generic remote, or names Europe/EU/EMEA/an EU-EEA country.
+queries:
+  - id: q1_data_analyst_amsterdam
+    role: data analyst
+    place: Amsterdam, Netherlands
+    relevant_title_phrases: [data analyst, analytics, business intelligence, bi analyst]
+    expected_countries: [netherlands]
+  - id: q2_software_engineer_berlin
+    role: software engineer
+    place: Berlin, Germany
+    relevant_title_phrases: [software engineer, software developer, backend, frontend, full stack, fullstack, softwareentwickler]
+    expected_countries: [germany]
+  - id: q3_product_manager_milano_italia
+    role: product manager
+    place: Milano, Italia
+    relevant_title_phrases: [product manager, product owner]
+    expected_countries: [italy]
+  - id: q4_risk_manager_frankfurt
+    role: risk manager
+    place: Frankfurt, Germany
+    relevant_title_phrases: [risk manager, risk management, credit risk, market risk, risk analyst]
+    expected_countries: [germany]
+  - id: q5_strategy_consultant_london
+    role: strategy consultant
+    place: London, United Kingdom
+    relevant_title_phrases: [consultant, strategy, advisory]
+    expected_countries: [uk]
+  - id: q6_investment_banking_analyst_paris
+    role: investment banking analyst
+    place: Paris, France
+    relevant_title_phrases: [investment banking, m&a, corporate finance, analyst]
+    expected_countries: [france]
+  - id: q7_data_scientist_remote_eu
+    role: data scientist
+    place: Remote
+    remote_area: Europe
+    relevant_title_phrases: [data scientist, machine learning, ml engineer]
+    expected_countries: [remote_eu]
+  - id: q8_project_manager_milan
+    role: project manager
+    place: Milan, Italy
+    relevant_title_phrases: [project manager, program manager, programme manager, pmo]
+    expected_countries: [italy]
+  - id: q9_awkward_russian_title_city_only
+    role: менеджер проектов
+    place: Милано
+    relevant_title_phrases: [project manager, program manager, project lead, pmo]
+    expected_countries: [italy]
+sample_size: 20
+sources: enter_default   # the same websites the wizard picks when a beginner just presses Enter on the websites question
+results_per_search: 20
+posted_within_days: 14
