@@ -1,0 +1,32 @@
+{
+  "data": [
+    {
+      "title": "Software Engineer",
+      "company_name": "Acme",
+      "location": "Berlin",
+      "remote": false,
+      "url": "https://www.arbeitnow.com/jobs/berlin",
+      "created_at": 1763222400,
+      "description": "<p>Build <b>APIs</b> in Berlin.</p>"
+    },
+    {
+      "title": "Software Engineer",
+      "company_name": "Beta",
+      "location": "Munich",
+      "remote": false,
+      "url": "https://www.arbeitnow.com/jobs/munich",
+      "created_at": 1763136000,
+      "description": "<p>Munich office.</p>"
+    },
+    {
+      "title": "Software Engineer",
+      "company_name": "Gamma",
+      "location": "Remote",
+      "remote": true,
+      "url": "https://www.arbeitnow.com/jobs/remote",
+      "created_at": 1763049600,
+      "description": "<p>Work from home.</p>"
+    }
+  ],
+  "links": {"next": null}
+}

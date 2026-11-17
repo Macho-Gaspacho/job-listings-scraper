@@ -207,6 +207,12 @@ def write_outputs(
     return _write_excel(rows, excel_file, place_names)
 
 
+def announce_links(count: int) -> None:
+    """Tell the user where the ready search links were written."""
+    if count:
+        print(f"Also see output/links.md for {count} ready search links.", flush=True)
+
+
 def _write_csv(rows: list[dict], path: Path) -> None:
     # utf-8-sig adds a marker so Excel on Windows shows accents (è, à) correctly.
     headers = [safe_cell(label) for _, label in OUTPUT_FIELDS]
@@ -306,7 +312,8 @@ def _write_excel(rows: list[dict], path: Path, place_names: list[str] | None = N
         "Job type is Full-time, Part-time, Contract, Internship, or Temporary when the source says. Remote is Yes, No, or Unknown.",
         "Level is Entry, Senior, or Unknown. It uses the source's level when there is one, otherwise words in the title.",
         "Languages lists languages the description appears to require. Visa is No sponsorship, Sponsorship offered, or Unknown. Both are guessed from the text, not confirmed by the employer.",
-        "Source type is company site, remote board, or aggregator. Sort or filter that column to see the less crowded sources first. Company site means the company's own careers page.",
+        "Source type is company site, job board, remote board, or aggregator. Sort or filter that column to see the less crowded sources first. Company site means the company's own careers page. Job board means a country or startup board.",
+        "Ready search links for sites this program does not read are written to output/links.md.",
         "The same title at the same company is kept once. The company site link is kept when a job board lists it too.",
         "Data sources: the company career pages and job boards you turned on, including Indeed and LinkedIn when they are enabled. Listings from Remote OK are included under their terms. Credit Remote OK: https://remoteok.com",
         "Delete data/seen_jobs.json if you want the next run to treat every listing as new again.",

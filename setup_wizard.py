@@ -13,10 +13,13 @@ from pathlib import Path
 
 import yaml
 
+from urllib.parse import urlparse
+
 from config import KNOWN_SYSTEMS
 from enrichment import canonical_job_type
-from places import resolve_place
+from places import norm, resolve_place
 from regions import INDEED_COUNTRIES, canonical_country, english_name, fold_text
+from source_map import auto_words, chosen_sources, recommend
 from synonyms import suggestions_for
 
 
@@ -26,13 +29,15 @@ HEADER = """# Created by the setup wizard.
 
 """
 
-SOURCE_NOTES = (
-    "  1. Indeed — a large job board. A good default for most cities.",
-    "  2. LinkedIn — public job posts. A long run can be slow, and LinkedIn sometimes blocks it.",
-    "  3. Remote boards — We Work Remotely and Remote OK. Useful for remote jobs.",
-    "     Remote boards follow the cities and countries you just chose.",
-    "  4. Company career pages — employers you name next. You apply on the company's own site.",
-)
+SOURCE_NOTES = """Which websites should we search?
+Press Enter (or type: any) and we pick the best mix for your country and job. This is the recommended choice.
+Or type numbers, separated by commas:
+  1. Company career pages — you apply on the company's own site. Least crowded.
+  2. Country and startup job boards — where we have one for your country.
+  3. Remote job boards — only useful if you want remote work.
+  4. Indeed
+  5. LinkedIn
+Indeed and LinkedIn have the most applicants per job, so we put them last."""
 
 SYSTEM_NOTES = (
     "  greenhouse     boards.greenhouse.io/NAME",
@@ -173,29 +178,42 @@ def resolve_remote_area(raw: str) -> tuple[str, str | None, bool] | None:
     return english_name(code), code, code in INDEED_COUNTRIES
 
 
-def parse_sources(raw: str) -> set[str] | None:
-    text = raw.strip().lower()
-    if text == "":
-        return {"indeed", "linkedin"}
-    if text == "all":
-        return {"indeed", "linkedin", "remote", "company_pages"}
-    names = {
-        "1": "indeed",
-        "2": "linkedin",
-        "3": "remote",
-        "4": "company_pages",
-        "indeed": "indeed",
-        "linkedin": "linkedin",
-        "remote": "remote",
-        "company": "company_pages",
-        "companies": "company_pages",
-    }
+_SOURCE_NUMBERS = {
+    "1": "company",
+    "2": "board",
+    "3": "remote",
+    "4": "indeed",
+    "5": "linkedin",
+}
+_SOURCE_NAMES = {
+    "indeed": "indeed",
+    "linkedin": "linkedin",
+    "arbeitnow": "board:arbeitnow",
+}
+
+
+def _source_text(raw: str) -> str:
+    """Normalise a websites answer. A lone ? stays. Other trailing ! and ? are removed."""
+    text = norm(raw)
+    if text == "?":
+        return text
+    return text.rstrip("!?").strip()
+
+
+def parse_sources(raw: str) -> str | set[str] | None:
+    """'auto', a set of groups, or None when the answer should be asked again.
+
+    Groups are company, board, remote, indeed, linkedin, and board:arbeitnow.
+    """
+    text = _source_text(raw)
+    if text == "" or text in auto_words():
+        return "auto"
     picked: set[str] = set()
     for part in text.split(","):
         token = part.strip()
         if not token:
             continue
-        source = names.get(token)
+        source = _SOURCE_NUMBERS.get(token) or _SOURCE_NAMES.get(token)
         if source is None:
             return None
         picked.add(source)
@@ -295,21 +313,28 @@ def build_config(
     job_types: list[str] | None = None,
     hide_senior: bool = False,
     visa_sponsorship: bool = False,
+    source_choice: str | None = None,
+    link_outs: list[str] | None = None,
 ) -> dict:
-    use_companies = "company_pages" in sources and bool(companies)
+    enabled = set(sources)
+    catalog = (
+        ("company_pages", "company site"),
+        ("arbeitnow", "job board"),
+        ("we_work_remotely", "remote board"),
+        ("remote_ok", "remote board"),
+        ("remotive", "remote board"),
+        ("working_nomads", "remote board"),
+        ("indeed", "aggregator"),
+        ("linkedin", "aggregator"),
+    )
     data = {
         "roles": roles,
         "require_title_match": require_title_match,
         "title_keywords": keywords_for(roles, extras, accepted),
         "locations": [_place_block(place) for place in places],
         "sources": [
-            {"id": "company_pages", "enabled": use_companies, "kind": "company site"},
-            {"id": "we_work_remotely", "enabled": "remote" in sources, "kind": "remote board"},
-            {"id": "remote_ok", "enabled": "remote" in sources, "kind": "remote board"},
-            {"id": "remotive", "enabled": False, "kind": "remote board"},
-            {"id": "working_nomads", "enabled": False, "kind": "remote board"},
-            {"id": "indeed", "enabled": "indeed" in sources, "kind": "aggregator"},
-            {"id": "linkedin", "enabled": "linkedin" in sources, "kind": "aggregator"},
+            {"id": source_id, "enabled": source_id in enabled, "kind": kind}
+            for source_id, kind in catalog
         ],
         "companies": [
             {
@@ -344,6 +369,10 @@ def build_config(
         filters["only_visa_sponsorship"] = True
     if filters:
         data["filters"] = filters
+    if source_choice:
+        data["source_choice"] = source_choice
+    if link_outs:
+        data["link_outs"] = list(link_outs)
     return data
 
 
@@ -364,6 +393,7 @@ def summary_text(data: dict) -> str:
         "remote_ok": "Remote OK",
         "remotive": "Remotive",
         "working_nomads": "Working Nomads",
+        "arbeitnow": "Arbeitnow",
         "indeed": "Indeed",
         "linkedin": "LinkedIn",
     }
@@ -665,26 +695,41 @@ def ask_exclude(io: IO) -> list[str]:
     return split_csv(io.ask("> "))
 
 
-def ask_sources(io: IO, indeed_ok: bool) -> set[str]:
+def ask_sources(io: IO, indeed_ok: bool, country: str, places: list[dict], roles: list[str]) -> str | set[str]:
+    """'auto', or the groups the user typed. Two failed answers use the recommended mix."""
+    failures = 0
     while True:
         io.say("")
-        io.say("Which websites should we search?")
-        io.say("Type the numbers, separated by commas. Press Enter for the usual choice: 1,2")
-        for line in SOURCE_NOTES:
-            io.say(line)
+        io.say(SOURCE_NOTES)
         if not indeed_ok:
-            io.say("Indeed does not cover this country, so option 1 will be left off.")
-        picked = parse_sources(io.ask("Your choice [1,2]: "))
-        if not picked:
-            io.say("Please type numbers from the list, like 1,2.")
-            continue
-        if not indeed_ok and "indeed" in picked:
-            picked.discard("indeed")
+            io.say("Indeed does not cover this country, so option 4 will be left off.")
+        picked = parse_sources(io.ask("Your choice [Enter]: "))
+        if picked is None:
+            failures += 1
+            if failures >= 2:
+                io.say("Using the recommended mix.")
+                picked = "auto"
+            else:
+                io.say(
+                    "I did not understand that. Press Enter and we pick for you, "
+                    "or type numbers like 1,4."
+                )
+                continue
+        if picked == "auto":
+            recommendation = recommend(country, places, roles)
+            for line in recommendation.explanation:
+                io.say(line)
+            if not indeed_ok and "indeed" not in recommendation.sources:
+                io.say("Indeed was left off because it does not cover this country.")
+            return "auto"
+        chosen = set(picked)
+        if not indeed_ok and "indeed" in chosen:
+            chosen.discard("indeed")
             io.say("Indeed was left off because it does not cover this country.")
-        if not picked:
-            picked = {"linkedin"}
+        if not chosen:
+            chosen = {"linkedin"}
             io.say("LinkedIn will be used.")
-        return picked
+        return chosen
 
 
 def ask_number(io: IO, default: int, low: int, high: int) -> int:
@@ -715,54 +760,164 @@ def ask_posted_within_days(io: IO) -> int:
     return ask_number(io, 14, 1, 365)
 
 
-def ask_system(io: IO) -> str:
+_SYSTEM_SKIP = {"", "skip", "не знаю", "don't know", "dont know", "idk", "?"}
+
+
+def _is_system_skip(raw: str) -> bool:
+    text = norm(raw)
+    if text == "?":
+        return True
+    return text in {norm(item) for item in _SYSTEM_SKIP if item != "?"}
+
+
+def _skip_company(io: IO, name: str) -> None:
+    io.say(f"Skipped {name}. You can add it later in config.yaml.")
+
+
+def _career_url(raw: str) -> str:
+    text = raw.strip()
+    if "://" not in text:
+        text = "https://" + text
+    return text
+
+
+def _looks_like_url(raw: str) -> bool:
+    text = raw.strip().lower()
+    if "://" in text or text.startswith("www."):
+        return True
+    return "/" in text and "." in text
+
+
+def _is_eu_lever(raw: str) -> bool:
+    host = (urlparse(_career_url(raw)).hostname or "").lower()
+    return host == "jobs.eu.lever.co"
+
+
+def _company_label(raw: str) -> str:
+    host = (urlparse(_career_url(raw)).hostname or "").lower()
+    if host.startswith("www."):
+        host = host[4:]
+    label = host.split(".")[0] if host else raw.strip()
+    return label or raw.strip()
+
+
+def detect_system(url: str) -> tuple[str, str] | None:
+    """Hiring system and public token from a careers address, or None."""
+    if _is_eu_lever(url):
+        return None
+    parsed = urlparse(_career_url(url))
+    host = (parsed.hostname or "").lower()
+    parts = [part for part in parsed.path.split("/") if part]
+    if host.endswith(".greenhouse.io") or host == "greenhouse.io":
+        if parts:
+            return "greenhouse", parts[0]
+        return None
+    if host == "jobs.lever.co" and parts:
+        return "lever", parts[0]
+    if host == "jobs.ashbyhq.com" and parts:
+        return "ashby", parts[0]
+    if host == "apply.workable.com" and parts:
+        return "workable", parts[0].strip()
+    if host.endswith(".recruitee.com"):
+        token = host.split(".")[0]
+        if token and token != "www":
+            return "recruitee", token
+    if host.endswith(".teamtailor.com"):
+        token = host.split(".")[0]
+        if token and token != "www":
+            return "teamtailor", f"https://{token}.teamtailor.com/jobs.rss"
+    return None
+
+
+def ask_system(io: IO, name: str) -> str | None:
+    """A hiring system, or None when this company is skipped. At most two wrong answers."""
     io.say("")
     io.say("Which hiring system does that company use?")
     io.say("Look at the careers address and match it to one of these:")
     for line in SYSTEM_NOTES:
         io.say(line)
     known = ", ".join(KNOWN_SYSTEMS)
+    wrong = 0
     while True:
-        system = io.ask("Hiring system: ").strip().lower()
+        system = norm(io.ask("Hiring system: "))
+        if _is_system_skip(system):
+            _skip_company(io, name)
+            return None
         if system in KNOWN_SYSTEMS:
             return system
+        wrong += 1
+        if wrong >= 2:
+            _skip_company(io, name)
+            return None
+        for line in SYSTEM_NOTES:
+            io.say(line)
         io.say(f"Please type one of: {known}.")
 
 
-def ask_token(io: IO, system: str) -> str:
+def ask_token(io: IO, system: str, name: str) -> str | None:
+    """The public token, or None when this company is skipped.
+
+    Bending Spoons has no token: Enter still adds it. Every other system
+    treats Enter or skip as a skip, and stops after three bad answers.
+    """
     io.say("")
     if system == "bendingspoons":
         io.say("Bending Spoons does not need a token. Press Enter.")
-        io.ask("Token: ")
+        raw = io.ask("Token: ").strip()
+        if norm(raw) == "skip":
+            _skip_company(io, name)
+            return None
         return ""
     io.say("Public id from the careers address (token). This is not a password.")
     if system == "teamtailor":
         io.say("Paste the full https address of the jobs.rss feed.")
     else:
         io.say("Example: if the address ends in /acme, the token is acme.")
+    bad = 0
     while True:
         token = io.ask("Token: ").strip()
-        if system == "teamtailor" and not token.startswith("http"):
+        if _is_system_skip(token):
+            _skip_company(io, name)
+            return None
+        if system == "teamtailor" and not token.lower().startswith("http"):
+            bad += 1
+            if bad >= 3:
+                _skip_company(io, name)
+                return None
             io.say("Teamtailor needs the full https address of the jobs RSS feed.")
             continue
-        if token:
-            return token
-        io.say("Please type the public id from the careers address.")
+        return token
 
 
 def ask_companies(io: IO) -> list[dict]:
     companies: list[dict] = []
     io.say("")
-    io.say("Company career pages are optional. Press Enter to skip.")
+    io.say("Type a company name, or paste its careers page address. Press Enter to skip.")
     while True:
         io.say("")
-        io.say("Company name (or press Enter to skip):")
-        name = io.ask("> ").strip()
-        if not name:
+        raw = io.ask("> ").strip()
+        if not raw:
             break
-        system = ask_system(io)
-        token = ask_token(io, system)
-        companies.append({"name": name, "system": system, "token": token})
+        if _is_eu_lever(raw):
+            io.say("This is an EU Lever page, which is not supported yet. Skipped.")
+        elif _looks_like_url(raw):
+            detected = detect_system(raw)
+            if detected:
+                system, token = detected
+                companies.append({"name": token, "system": system, "token": token})
+            else:
+                label = _company_label(raw)
+                system = ask_system(io, label)
+                if system:
+                    token = ask_token(io, system, label)
+                    if token is not None:
+                        companies.append({"name": label, "system": system, "token": token})
+        else:
+            system = ask_system(io, raw)
+            if system:
+                token = ask_token(io, system, raw)
+                if token is not None:
+                    companies.append({"name": raw, "system": system, "token": token})
         if not io.yes_no("Add another company?", default=False):
             break
     return companies
@@ -825,13 +980,14 @@ def _ask_and_save(path: Path, io: IO, run_search) -> int:
         job_types = ask_job_types(io)
         hide_senior = ask_hide_senior(io)
         visa_sponsorship = ask_visa(io)
-        sources = ask_sources(io, indeed_ok)
-        companies = ask_companies(io) if "company_pages" in sources else []
-        if "company_pages" in sources and not companies:
-            io.say("No companies were added, so company career pages will be left off.")
-            sources.discard("company_pages")
         places = places_from(place, remote)
-        sources = _finish_sources(io, sources, indeed_ok, places)
+        choice = ask_sources(io, indeed_ok, country, places, roles)
+        want_companies = choice == "auto" or (isinstance(choice, set) and "company" in choice)
+        companies = ask_companies(io) if want_companies else []
+        if isinstance(choice, set) and "company" in choice and not companies:
+            io.say("No companies were added, so company career pages will be left off.")
+        enabled, link_ids = chosen_sources(choice, country, places, roles, companies)
+        sources = _finish_sources(io, enabled, indeed_ok, places)
         results_per_search = ask_results_per_search(io)
         posted_within_days = ask_posted_within_days(io)
         data = build_config(
@@ -849,6 +1005,8 @@ def _ask_and_save(path: Path, io: IO, run_search) -> int:
             job_types=job_types,
             hide_senior=hide_senior,
             visa_sponsorship=visa_sponsorship,
+            source_choice="auto" if choice == "auto" else None,
+            link_outs=link_ids if choice == "auto" else None,
         )
         io.say("")
         io.say(summary_text(data))

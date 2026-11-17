@@ -53,7 +53,8 @@ try:
         title_is_relevant,
     )
     from regions import _country_in_text
-    from save_results import load_seen, save_seen, write_daily_files, write_outputs
+    from link_outs import links_for_settings
+    from save_results import announce_links, load_seen, save_seen, write_daily_files, write_outputs
     from sources import fetch_listings, quiet_library_logs
 except ModuleNotFoundError as exc:
     if __name__ == "__main__":
@@ -243,6 +244,7 @@ def _run_search(config_path: Path, fetch=None, getter=None, verbose: bool = Fals
     company_count = sum(1 for company in settings.companies or [] if company.enabled)
     attempts = searches + (company_count if settings.company_pages_enabled else 0)
     attempts += len(settings.remote_boards or [])
+    attempts += len(getattr(settings, "job_boards", None) or [])
     if attempts and failures == attempts:
         print(
             "Nothing was downloaded (no internet?). "
@@ -269,6 +271,7 @@ def _run_search(config_path: Path, fetch=None, getter=None, verbose: bool = Fals
     print(f"Saved {len(rows)} listings ({summary['new_listings']} new).")
     print(f"Excel: {excel_path}")
     print(f"CSV:   {settings.csv_path}")
+    announce_links(links_for_settings(settings))
     print(f"New since last run: {new_csv}")
     print(f"Run summary: {last_run}")
     if not rows:

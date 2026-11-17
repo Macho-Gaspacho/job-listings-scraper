@@ -382,11 +382,28 @@ def title_is_excluded(title: str, phrases: list[str]) -> bool:
     return any(phrase_matches(title, phrase) for phrase in phrases)
 
 
+# A merged row can name more than one source type. The best (lowest) tier wins.
+_SOURCE_TIER = {
+    "company site": 1,
+    "job board": 2,
+    "remote board": 3,
+    "aggregator": 4,
+}
+
+
+def _source_tier(source_type: object) -> int:
+    parts = [part.strip() for part in str(source_type or "").split(",") if part.strip()]
+    if not parts:
+        return 5
+    return min(_SOURCE_TIER.get(part, 5) for part in parts)
+
+
 def sort_rows(rows: list[dict]) -> list[dict]:
-    """New listings first, and within that group the newest date first."""
+    """New listings first, then the less crowded source, then the newest date."""
 
     def sort_key(row: dict) -> tuple:
         new_first = 0 if row.get("is_new") == "yes" else 1
+        tier = _source_tier(row.get("source_type"))
         raw = row.get("date_posted") or ""
         parts = raw.split("-")
         if len(parts) == 3 and all(part.isdigit() for part in parts):
@@ -394,6 +411,6 @@ def sort_rows(rows: list[dict]) -> list[dict]:
             date_key = tuple(-int(part) for part in parts)
         else:
             date_key = (0, 0, 0)
-        return (new_first, date_key)
+        return (new_first, tier, date_key)
 
     return sorted(rows, key=sort_key)

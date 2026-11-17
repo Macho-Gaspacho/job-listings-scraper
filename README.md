@@ -91,10 +91,10 @@ It asks, one at a time:
 - which city and country (for example `Berlin, Germany` or `Milano, Italia`; local names such as `Милано` are understood)
 - whether to include remote jobs, and in which country
 - extra words that must appear in the title (you can leave this blank)
-- which websites to use
-- company career pages, which you can skip
+- which websites to use. Press Enter, or type `any`, and the program picks a mix for your country and job. Or type numbers: `1` company career pages, `2` country and startup boards, `3` remote boards, `4` Indeed, `5` LinkedIn. The old numbers were 1 Indeed, 2 LinkedIn, 3 remote boards, 4 company career pages.
+- company career pages, which you can skip. Paste a careers-page address, or press Enter. If you do not know the hiring system, press Enter and that company is skipped.
 
-Press Enter to accept a choice shown in brackets. Indeed and LinkedIn are enough for most searches.
+Press Enter on the websites question for the recommended mix. Indeed and LinkedIn are still included, and they come last because those sites have the most applicants per job.
 
 A fresh download has no `config.yaml`, so the first run asks these questions and writes one. If you save a new search later, the old file is copied to `config.backup.yaml` first. Ready-made examples are in `examples/`.
 

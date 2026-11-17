@@ -34,12 +34,14 @@ from sources import fetch_listings  # noqa: E402
 from regions import (  # noqa: E402
     COUNTRY_ALIASES,
     EU_EEA,
+    INDEED_COUNTRIES,
     NATIVE_NAMES,
     _country_in_text,
     contains_phrase,
     english_name,
     fold_text,
 )
+from source_map import chosen_sources  # noqa: E402
 from synonyms import suggestions_for  # noqa: E402
 
 
@@ -370,6 +372,13 @@ def _remote_block(raw: str) -> tuple[dict | None, str | None]:
     return {"label": label, "indeed": on_indeed, "country": code}, None
 
 
+class _SilentIO:
+    """Collects nothing. The benchmark does not print the wizard's source notes."""
+
+    def say(self, _text: str) -> None:
+        return None
+
+
 def _config_for(query: dict, spec: dict, folder: Path) -> tuple[dict | None, str | None]:
     parsed, problem = _accept_place(str(query.get("place") or ""))
     if parsed is None:
@@ -388,21 +397,26 @@ def _config_for(query: dict, spec: dict, folder: Path) -> tuple[dict | None, str
         country = _REMOTE_HOME_COUNTRY
     role = str(query["role"])
     suggestions = suggestions_for([role], country)
-    sources = setup_wizard.parse_sources("")
-    if not sources:
+    places = setup_wizard.places_from(parsed, remote)
+    choice = setup_wizard.parse_sources("")
+    if choice is None:
         return None, "sources"
+    enabled, link_ids = chosen_sources(choice, country, places, [role], [])
+    enabled = setup_wizard._finish_sources(_SilentIO(), enabled, country in INDEED_COUNTRIES, places)
     data = setup_wizard.build_config(
         [role],
-        setup_wizard.places_from(parsed, remote),
+        places,
         country,
         [],
         suggestions,
         [],
-        sources,
+        enabled,
         [],
         require_title_match=bool(suggestions),
         results_per_search=int(spec["results_per_search"]),
         posted_within_days=int(spec["posted_within_days"]),
+        source_choice="auto" if choice == "auto" else None,
+        link_outs=link_ids if choice == "auto" else None,
     )
     data["output"] = {
         "directory": ".",

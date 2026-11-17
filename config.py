@@ -42,6 +42,7 @@ KNOWN_SOURCES = {
     "remote_ok": "remote board",
     "remotive": "remote board",
     "working_nomads": "remote board",
+    "arbeitnow": "job board",
 }
 
 # Public applicant-tracking systems the company list can use.
@@ -117,6 +118,8 @@ class Settings:
     location_rules: LocationRules | None = None
     wwr_categories: tuple[str, ...] | None = None
     filters: Filters | None = None
+    job_boards: list[str] | None = None
+    link_outs: tuple[str, ...] = ()
 
 
 def _text_list(values: object) -> list[str]:
@@ -127,8 +130,18 @@ def _text_list(values: object) -> list[str]:
     return [str(item).strip() for item in values if str(item).strip()]
 
 
-def _load_sources(raw: dict) -> tuple[list[str], bool, list[str]]:
-    """Return enabled Indeed/LinkedIn sites, whether company pages are on, and remote boards."""
+def _load_link_outs(raw: dict) -> tuple[str, ...]:
+    """Optional link-out ids. A config without the key loads as before."""
+    if "link_outs" not in raw or raw.get("link_outs") is None:
+        return ()
+    value = raw.get("link_outs")
+    if not isinstance(value, list):
+        raise ValueError("'link_outs' in config.yaml should be a list.")
+    return tuple(_text_list(value))
+
+
+def _load_sources(raw: dict) -> tuple[list[str], bool, list[str], list[str]]:
+    """Enabled aggregators, company pages, remote boards, and job boards."""
     sources = raw.get("sources")
     if sources is None:
         sites = [site.lower() for site in _text_list(raw.get("sites"))]
@@ -138,13 +151,14 @@ def _load_sources(raw: dict) -> tuple[list[str], bool, list[str]]:
         if unknown:
             names = ", ".join(KNOWN_SITES)
             raise ValueError(f"Unknown site '{unknown[0]}'. Choose from: {names}.")
-        return sites, False, []
+        return sites, False, [], []
 
     if not isinstance(sources, list):
         raise ValueError("'sources' in config.yaml should be a list.")
     sites = []
     company_pages = False
     remote_boards = []
+    job_boards = []
     for entry in sources:
         if not isinstance(entry, dict) or not str(entry.get("id") or "").strip():
             raise ValueError("Each source needs an id, such as indeed or company_pages.")
@@ -164,7 +178,9 @@ def _load_sources(raw: dict) -> tuple[list[str], bool, list[str]]:
             company_pages = True
         elif expected == "remote board":
             remote_boards.append(source_id)
-    return sites, company_pages, remote_boards
+        elif expected == "job board":
+            job_boards.append(source_id)
+    return sites, company_pages, remote_boards, job_boards
 
 
 def _load_companies(value: object) -> list[Company]:
@@ -398,9 +414,10 @@ def load_config(path: str | Path) -> Settings:
     if not places:
         raise ValueError("Add at least one location under 'locations' in config.yaml.")
 
-    sites, company_pages_enabled, remote_boards = _load_sources(raw)
+    sites, company_pages_enabled, remote_boards, job_boards = _load_sources(raw)
+    link_outs = _load_link_outs(raw)
     companies = _load_companies(raw.get("companies"))
-    if not sites and not company_pages_enabled and not remote_boards:
+    if not sites and not company_pages_enabled and not remote_boards and not job_boards:
         raise ValueError("Turn on at least one source in config.yaml.")
 
     results_value = _provided(raw, "results_per_search")
@@ -449,4 +466,6 @@ def load_config(path: str | Path) -> Settings:
         location_rules=build_location_rules(places, country, location_filter),
         wwr_categories=_wwr_categories(raw),
         filters=_load_filters(raw),
+        job_boards=job_boards,
+        link_outs=link_outs,
     )

@@ -1,0 +1,104 @@
+# Which public sources to use for a country. Data only. The program does not fetch link-outs.
+tiers: [company, board, remote, link_out, aggregator]
+defaults:
+  board: []
+  link_out: [linkedin_jobs_search_link, eures]
+  aggregator: [indeed, linkedin]
+countries:
+  germany:
+    board: [arbeitnow]
+    link_out: [welcome_to_the_jungle, wellfound, eures, bundesagentur_link]
+    aggregator: [indeed, linkedin]
+  austria:
+    board: [arbeitnow]
+    link_out: [eures]
+    aggregator: [indeed, linkedin]
+  switzerland:
+    board: [arbeitnow]
+    link_out: [eures]
+    aggregator: [indeed, linkedin]
+  italy:
+    board: []
+    link_out: [welcome_to_the_jungle, eures]
+    aggregator: [indeed, linkedin]
+  netherlands:
+    board: []
+    link_out: [welcome_to_the_jungle, eures]
+    aggregator: [indeed, linkedin]
+  france:
+    # apec_link is omitted: the public search URL answered HTTP 403.
+    board: []
+    link_out: [welcome_to_the_jungle, eures]
+    aggregator: [indeed, linkedin]
+  spain:
+    board: []
+    link_out: [welcome_to_the_jungle, eures]
+    aggregator: [indeed, linkedin]
+  uk:
+    board: []
+    link_out: [welcome_to_the_jungle, wellfound]
+    aggregator: [indeed, linkedin]
+  poland:
+    board: []
+    link_out: [eures, justjoinit_link]
+    aggregator: [indeed, linkedin]
+remote:
+  remote: [remotive, we_work_remotely, remote_ok, working_nomads]
+# epso_traineeships is omitted: no public search URL with {q} and {loc} returned HTTP 200.
+graduate_link_outs: [un_careers_internships]
+auto_words:
+  - any
+  - any site
+  - any website
+  - any relevant site
+  - any relevant website
+  - all
+  - любой
+  - любые
+  - любой сайт
+  - все
+  - не знаю
+  - незнаю
+  - без разницы
+  - qualsiasi
+  - tutti
+  - non so
+  - egal
+  - alle
+  - weiß nicht
+  - weiss nicht
+  - n'importe
+  - tous
+  - je ne sais pas
+  - cualquiera
+  - todos
+  - no sé
+  - no se
+  - don't know
+  - dont know
+  - idk
+  - "?"
+  - recommended
+  - best
+link_outs:
+  welcome_to_the_jungle:
+    label: Welcome to the Jungle
+    url: "https://www.welcometothejungle.com/en/jobs?query={q}&aroundQuery={loc}"
+  wellfound:
+    label: Wellfound
+    url: "https://wellfound.com/jobs?q={q}&l={loc}"
+  eures:
+    label: EURES
+    url: "https://europa.eu/eures/portal/jv-se/search?keywords={q}&location={loc}"
+  bundesagentur_link:
+    label: Bundesagentur für Arbeit
+    url: "https://www.arbeitsagentur.de/jobsuche/suche?was={q}&wo={loc}"
+  justjoinit_link:
+    label: JustJoin.it
+    url: "https://justjoin.it/job-offers/all-locations?keyword={q}&location={loc}"
+  linkedin_jobs_search_link:
+    label: LinkedIn jobs search
+    url: "https://www.linkedin.com/jobs/search/?keywords={q}&location={loc}"
+  un_careers_internships:
+    label: UN Careers internships
+    url: "https://careers.un.org/jobopening?language=en&keyword={q}&location={loc}"

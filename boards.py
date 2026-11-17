@@ -11,6 +11,7 @@ They are not searched once per role, which keeps the number of requests small.
 from __future__ import annotations
 
 import json
+import re
 import time
 import urllib.error
 import urllib.request
@@ -42,6 +43,7 @@ USER_AGENT = (
 # The public all-jobs feed. Checked once: it returns RSS (HTTP 200).
 # A config can list categories instead. See we_work_remotely_feed_urls.
 DEFAULT_WWR_FEED = "https://weworkremotely.com/remote-jobs.rss"
+ARBEITNOW_API = "https://www.arbeitnow.com/api/job-board-api?page={page}"
 
 
 # Seconds to wait before try 2 and try 3. Retry-After replaces these when it
@@ -497,6 +499,51 @@ def parse_working_nomads(payload: list) -> list[dict]:
     return rows
 
 
+def _plain_html(value: object) -> str:
+    """Drop HTML tags. The same pattern listings.snippet uses, without cutting the text."""
+    text = unescape(str(value or ""))
+    text = re.sub(r"(?is)<[^>]+>", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def parse_arbeitnow(payload: dict) -> list[dict]:
+    """Arbeitnow's public job-board API. created_at is unix seconds."""
+    rows = []
+    for job in (payload or {}).get("data") or []:
+        if not isinstance(job, dict):
+            continue
+        rows.append(
+            {
+                "title": job.get("title") or "",
+                "company": job.get("company_name") or "",
+                "location": job.get("location") or "",
+                "is_remote": bool(job.get("remote")),
+                "url": job.get("url") or "",
+                "date_posted": _iso_date(job.get("created_at")),
+                "description": _plain_html(job.get("description") or ""),
+                "source": "arbeitnow",
+            }
+        )
+    return rows
+
+
+def fetch_arbeitnow(getter, sleep=time.sleep) -> list[dict]:
+    """At most three pages, one second apart. Stop on an empty page or no next link."""
+    rows = []
+    for page in range(1, 4):
+        if page > 1:
+            sleep(1)
+        payload = _json_bytes(getter(ARBEITNOW_API.format(page=page)))
+        if not isinstance(payload, dict):
+            break
+        chunk = parse_arbeitnow(payload)
+        rows.extend(chunk)
+        links = payload.get("links") or {}
+        if not chunk or not links.get("next"):
+            break
+    return rows
+
+
 def parse_teamtailor(body: bytes, company: str) -> list[dict]:
     """A company's public Teamtailor RSS feed, for example careers.example.com/jobs.rss."""
     rows = []
@@ -590,6 +637,8 @@ def _remote_jobs(source_id: str, getter, settings: Settings) -> list[dict]:
         if not isinstance(payload, list):
             raise RuntimeError("Working Nomads did not return a job list")
         return parse_working_nomads(payload)
+    if source_id == "arbeitnow":
+        return fetch_arbeitnow(getter)
     raise RuntimeError(f"unknown remote board '{source_id}'")
 
 
@@ -605,6 +654,8 @@ def collect_board_listings(settings: Settings, pause=time.sleep, getter=http_get
         for company in settings.companies or []:
             if company.enabled:
                 steps.append(("company", company))
+    for source_id in getattr(settings, "job_boards", None) or []:
+        steps.append(("job", source_id))
     for source_id in settings.remote_boards or []:
         steps.append(("remote", source_id))
 
@@ -618,6 +669,21 @@ def collect_board_listings(settings: Settings, pause=time.sleep, getter=http_get
                     _company_jobs(company, getter),
                     settings,
                     "company site",
+                )
+            except Exception as exc:
+                failures += 1
+                report_skip(exc)
+                found = []
+            else:
+                print(f"  Kept {len(found)} matching listings.", flush=True)
+        elif kind == "job":
+            source_id = str(target)
+            print(f"Reading job board {source_id.replace('_', ' ')}...", flush=True)
+            try:
+                found = filter_board_jobs(
+                    _remote_jobs(source_id, getter, settings),
+                    settings,
+                    "job board",
                 )
             except Exception as exc:
                 failures += 1

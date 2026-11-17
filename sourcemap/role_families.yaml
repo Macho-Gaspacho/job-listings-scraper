@@ -1,0 +1,91 @@
+# Role text -> family. First family in this file wins.
+# graduate is a flag as well as a list: a role can be data and graduate.
+# Matching uses places.norm and whole words.
+graduate:
+  - graduate
+  - graduate programme
+  - graduate program
+  - trainee
+  - traineeship
+  - internship
+  - intern
+  - stage
+  - stagiaire
+  - praktikum
+  - werkstudent
+  - junior
+tech:
+  - software engineer
+  - software developer
+  - developer
+  - backend
+  - frontend
+  - front end
+  - back end
+  - full stack
+  - fullstack
+  - devops
+  - site reliability
+  - sre
+  - ml engineer
+  - machine learning engineer
+  - cloud engineer
+  - data engineer
+  - qa engineer
+  - security engineer
+data:
+  - data scientist
+  - data science
+  - data analyst
+  - analytics
+  - business intelligence
+  - bi analyst
+  - business analyst
+  - market research
+  - quantitative analyst
+  - quant
+product_project:
+  - product manager
+  - product owner
+  - project manager
+  - program manager
+  - programme manager
+  - pmo
+  - delivery manager
+  - scrum master
+consulting:
+  - consultant
+  - consulting
+  - strategy
+  - advisory
+  - big 4
+  - management consultant
+finance:
+  - risk manager
+  - risk analyst
+  - investment banking
+  - investment banker
+  - financial analyst
+  - finance manager
+  - controller
+  - auditor
+  - credit risk
+  - treasury
+  - private equity
+  - asset management
+marketing:
+  - marketing manager
+  - product marketing
+  - growth
+  - performance marketing
+  - brand manager
+  - seo
+  - crm manager
+medicine:
+  - physician
+  - doctor
+  - medical doctor
+  - arzt
+  - medico
+  - médecin
+other: []
