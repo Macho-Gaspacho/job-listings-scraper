@@ -77,6 +77,10 @@ class Company:
     system: str
     token: str = ""
     enabled: bool = True
+    region: str = ""
+    families: tuple[str, ...] = ()
+    curated: bool = False
+    jobs_in_country: int = 0
 
 
 @dataclass
@@ -201,12 +205,24 @@ def _load_companies(value: object) -> list[Company]:
             raise ValueError(f"{entry.get('name')} needs a token that is the https address of its jobs RSS feed.")
         if system not in {"bendingspoons"} and not token:
             raise ValueError(f"{entry.get('name')} needs a token (the public id in its careers URL).")
+        families = entry.get("families") or []
+        if isinstance(families, str):
+            families = [families]
+        if not isinstance(families, list):
+            raise ValueError(f"{entry.get('name')} families should be a list.")
+        jobs_in_country = entry.get("jobs_in_country") or 0
+        if isinstance(jobs_in_country, bool) or not isinstance(jobs_in_country, int):
+            raise ValueError(f"{entry.get('name')} jobs_in_country should be a whole number.")
         companies.append(
             Company(
                 name=str(entry["name"]).strip(),
                 system=system,
                 token=token,
                 enabled=bool(entry.get("enabled", True)),
+                region=str(entry.get("region") or "").strip().casefold(),
+                families=tuple(str(item).strip() for item in families if str(item).strip()),
+                curated=bool(entry.get("curated", False)),
+                jobs_in_country=jobs_in_country,
             )
         )
     return companies

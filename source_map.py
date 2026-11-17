@@ -13,6 +13,7 @@ from pathlib import Path
 
 import yaml
 
+from config import KNOWN_SYSTEMS, Company
 from places import norm
 from regions import INDEED_COUNTRIES, canonical_country, english_name
 
@@ -20,6 +21,9 @@ from regions import INDEED_COUNTRIES, canonical_country, english_name
 _ROOT = Path(__file__).resolve().parent
 _SOURCES_PATH = _ROOT / "sourcemap" / "sources.yaml"
 _FAMILIES_PATH = _ROOT / "sourcemap" / "role_families.yaml"
+_EMPLOYER_DIR = _ROOT / "employers"
+
+_EMPLOYER_LINK_FAMILIES = {"consulting", "finance", "data", "product_project"}
 
 _FAMILY_ORDER = (
     "tech",
@@ -249,6 +253,77 @@ def _family_of(roles: list[str]) -> tuple[str, bool]:
     return family, graduate
 
 
+def _employer_companies(path: Path) -> list[Company]:
+    """Enabled employers whose last check succeeded. Missing files are empty."""
+    if not path.is_file():
+        return []
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(raw, dict):
+        return []
+    found: list[Company] = []
+    for entry in raw.get("employers") or []:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("enabled", True) is False:
+            continue
+        last = entry.get("last_check") or {}
+        status = str(last.get("status") or "ok") if isinstance(last, dict) else "ok"
+        if status != "ok":
+            continue
+        system = str(entry.get("system") or "").strip().casefold()
+        name = str(entry.get("name") or "").strip()
+        if not name or system not in KNOWN_SYSTEMS:
+            continue
+        families = entry.get("families") or []
+        if isinstance(families, str):
+            families = [families]
+        jobs = 0
+        if isinstance(last, dict):
+            try:
+                jobs = int(last.get("jobs_in_country") or 0)
+            except (TypeError, ValueError):
+                jobs = 0
+        found.append(
+            Company(
+                name=name,
+                system=system,
+                token=str(entry.get("token") or "").strip(),
+                enabled=True,
+                region=str(entry.get("region") or "").strip().casefold(),
+                families=tuple(str(item).strip() for item in families if str(item).strip()),
+                curated=True,
+                jobs_in_country=jobs,
+            )
+        )
+    return found
+
+
+def curated_employers(country: str, places: list, roles: list[str]) -> list[Company]:
+    """Curated career pages for this country and role, capped at 60.
+
+    A remote place also adds employers from employers/europe_remote.yaml.
+    """
+    from boards import select_companies
+
+    places = list(places or [])
+    country_key = _country_key(country)
+    found: list[Company] = []
+    seen: set[tuple[str, str]] = set()
+    paths = []
+    if country_key:
+        paths.append(_EMPLOYER_DIR / f"{country_key}.yaml")
+    if _any_remote(places):
+        paths.append(_EMPLOYER_DIR / "europe_remote.yaml")
+    for path in paths:
+        for company in _employer_companies(path):
+            key = (company.system, company.token.casefold())
+            if key in seen:
+                continue
+            seen.add(key)
+            found.append(company)
+    return select_companies(found, roles)
+
+
 def recommend(country: str, places: list, roles: list[str]) -> Recommendation:
     """Ordered source ids, link-out ids, and the plain-language explanation."""
     places = list(places or [])
@@ -268,12 +343,22 @@ def recommend(country: str, places: list, roles: list[str]) -> Recommendation:
     if graduate:
         extra = _sources().get("graduate_link_outs") or []
         link_ids = _unique(link_ids + [str(item) for item in extra])
+    if family in _EMPLOYER_LINK_FAMILIES:
+        mapping = _sources().get("employer_link_outs") or {}
+        if isinstance(mapping, dict):
+            extra = mapping.get(country_key) or []
+            link_ids = _unique(link_ids + [str(item) for item in extra])
     link_ids = [item for item in link_ids if link_spec(item)]
     sources = tuple(_unique(boards + remote_ids + aggregators))
     label = _FAMILY_LABEL.get(family, family.replace("_", " "))
     country_name = english_name(country_key) if country_key else str(country or "").strip()
+    curated = curated_employers(country_key, places, roles)
     lines = [f"Recommended for a {label} job in {country_name}:"]
-    lines.append("  First: company career pages, if you add companies in the next step.")
+    lines.append(
+        "  First: company career pages "
+        f"({len(curated)} employers that hire {label} people in {country_name}, "
+        "plus any you add)."
+    )
     if boards:
         lines.append(f"  Then: {_labels(boards)}.")
     if remote_ids:

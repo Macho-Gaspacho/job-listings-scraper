@@ -38,7 +38,7 @@ def _companies(answers: list[str]) -> tuple[list[dict], str]:
         ("https://job-boards.greenhouse.io/stripe/jobs/123", ("greenhouse", "stripe")),
         ("https://job-boards.eu.greenhouse.io/acme", ("greenhouse", "acme")),
         ("https://jobs.lever.co/spotify", ("lever", "spotify")),
-        ("https://jobs.eu.lever.co/acme/abc-123", None),
+        ("https://jobs.eu.lever.co/acme/abc-123", ("lever", "acme")),
         ("https://jobs.ashbyhq.com/openai", ("ashby", "openai")),
         ("https://apply.workable.com/acme/", ("workable", "acme")),
         ("https://acme.recruitee.com/o/data-analyst", ("recruitee", "acme")),
@@ -87,7 +87,7 @@ def test_unknown_careers_url_can_be_skipped():
     assert companies == []
 
 
-def test_eu_lever_page_is_skipped():
+def test_eu_lever_page_is_added_with_region():
     companies, text = _companies(["https://jobs.eu.lever.co/acme", "n"])
-    assert companies == []
-    assert "EU Lever" in text
+    assert companies == [{"name": "acme", "system": "lever", "token": "acme", "region": "eu"}]
+    assert "not supported" not in text

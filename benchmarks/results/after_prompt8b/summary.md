@@ -1,0 +1,11 @@
+| query | status | total | relevant_in_sample | wrong_country | company_pages_% | aggregators_% | per_source | blocked | errors | seconds |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| q1_data_analyst_amsterdam | ok | 30 | 14/20 | 0 | 0 | 100 | indeed:11, linkedin:20 |  |  | 36.0 |
+| q2_software_engineer_berlin | ok | 52 | 16/20 | 2 | 52 | 46 | Ashby careers:2, Celonis careers:2, Cohere careers:1, Contentful careers:1, Databricks careers:4, Deliveroo careers:1, Helsing careers:7, Parloa careers:3, Pennylane careers:2, SumUp careers:1, Wolt careers:3, arbeitnow:1, indeed:9, linkedin:15 |  |  | 52.5 |
+| q3_product_manager_milano_italia | ok | 36 | 17/20 | 1 | 28 | 72 | Bending Spoons careers:5, Kong careers:1, Pennylane careers:1, Qonto careers:1, indeed:7, linkedin:19, n8n careers:2 |  |  | 38.6 |
+| q4_risk_manager_frankfurt | ok | 215 | 0/20 | 5 | 82 | 18 | Capco careers:62, Pennylane careers:16, Pigment careers:9, Qonto careers:13, Raisin careers:21, Solaris careers:7, Stripe careers:12, SumUp careers:37, indeed:18, linkedin:20 |  |  | 41.1 |
+| q5_strategy_consultant_london | ok | 103 | 8/20 | 0 | 61 | 39 | Capco careers:62, Thoughtworks careers:1, indeed:20, linkedin:20 |  |  | 27.2 |
+| q6_investment_banking_analyst_paris | ok | 356 | 0/20 | 20 | 89 | 11 | Adyen careers:4, Alan careers:99, Bunq careers:1, Capco careers:11, N26 careers:1, Pennylane careers:52, Pigment careers:46, Qonto careers:29, Stripe careers:10, SumUp careers:45, Swile careers:14, Trade Republic careers:4, indeed:20, linkedin:20 |  |  | 54.5 |
+| q7_data_scientist_remote_eu | ok | 19 | 11/19 | 8 | 0 | 100 | linkedin:19 |  |  | 89.6 |
+| q8_project_manager_milan | ok | 37 | 19/20 | 0 | 0 | 100 | indeed:17, linkedin:20 |  |  | 35.2 |
+| q9_awkward_russian_title_city_only | ok | 223 | 0/20 | 4 | 91 | 9 | Adyen careers:1, Anthropic careers:2, Ashby careers:16, Auto1 careers:1, Bending Spoons careers:40, Capco careers:11, Catawiki careers:10, Celonis careers:2, Databricks careers:5, Datadog careers:1, Deliveroo careers:21, Elastic careers:2, ElevenLabs careers:18, Kong careers:8, MongoDB careers:1, Parloa careers:1, Pennylane careers:4, Qonto careers:8, SumUp careers:47, linkedin:20, n8n careers:4 |  |  | 44.5 |

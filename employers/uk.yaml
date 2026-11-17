@@ -1,0 +1,822 @@
+country: uk
+checked_on: '2026-11-17'
+employers:
+- name: Adyen
+  system: greenhouse
+  token: adyen
+  region: ''
+  families:
+  - finance
+  - tech
+  - data
+  - product_project
+  hub_cities: &id001
+  - London
+  - Manchester
+  - Edinburgh
+  - Birmingham
+  - Cambridge
+  - Bristol
+  last_check:
+    status: ok
+    jobs_total: 238
+    jobs_in_country: 9
+  enabled: true
+- name: Celonis
+  system: greenhouse
+  token: celonis
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 259
+    jobs_in_country: 22
+  enabled: true
+- name: Contentful
+  system: greenhouse
+  token: contentful
+  region: ''
+  families:
+  - tech
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 51
+    jobs_in_country: 13
+  enabled: true
+- name: Deliveroo
+  system: greenhouse
+  token: deliveroo
+  region: ''
+  families:
+  - tech
+  - product_project
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 183
+    jobs_in_country: 119
+  enabled: true
+- name: Monzo
+  system: greenhouse
+  token: monzo
+  region: ''
+  families:
+  - finance
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 59
+    jobs_in_country: 50
+  enabled: true
+- name: Datadog
+  system: greenhouse
+  token: datadog
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 382
+    jobs_in_country: 16
+  enabled: true
+- name: Elastic
+  system: greenhouse
+  token: elastic
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 383
+    jobs_in_country: 28
+  enabled: true
+- name: Trade Republic
+  system: greenhouse
+  token: traderepublicbank
+  region: ''
+  families:
+  - finance
+  - tech
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 38
+    jobs_in_country: 5
+  enabled: true
+- name: Helsing
+  system: greenhouse
+  token: helsing
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 176
+    jobs_in_country: 38
+  enabled: true
+- name: Flow Traders
+  system: greenhouse
+  token: flowtraders
+  region: ''
+  families:
+  - finance
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 45
+    jobs_in_country: 3
+  enabled: true
+- name: Capco
+  system: greenhouse
+  token: capco
+  region: ''
+  families:
+  - consulting
+  - finance
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 711
+    jobs_in_country: 75
+  enabled: true
+- name: InterSystems
+  system: greenhouse
+  token: intersystems
+  region: ''
+  families:
+  - tech
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 86
+    jobs_in_country: 12
+  enabled: true
+- name: Wolt
+  system: greenhouse
+  token: wolt
+  region: ''
+  families:
+  - tech
+  - product_project
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 184
+    jobs_in_country: 9
+  enabled: true
+- name: HelloFresh
+  system: greenhouse
+  token: hellofresh
+  region: ''
+  families:
+  - tech
+  - product_project
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 368
+    jobs_in_country: 26
+  enabled: true
+- name: SumUp
+  system: greenhouse
+  token: sumup
+  region: ''
+  families:
+  - finance
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 317
+    jobs_in_country: 70
+  enabled: true
+- name: GoCardless
+  system: greenhouse
+  token: gocardless
+  region: ''
+  families:
+  - finance
+  - tech
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 31
+    jobs_in_country: 9
+  enabled: true
+- name: Thoughtworks
+  system: greenhouse
+  token: thoughtworks
+  region: ''
+  families:
+  - consulting
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 35
+    jobs_in_country: 1
+  enabled: true
+- name: IMC
+  system: greenhouse
+  token: imc
+  region: ''
+  families:
+  - finance
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 153
+    jobs_in_country: 8
+  enabled: true
+- name: Typeform
+  system: greenhouse
+  token: typeform
+  region: ''
+  families:
+  - tech
+  - product_project
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 6
+    jobs_in_country: 4
+  enabled: true
+- name: Stripe
+  system: greenhouse
+  token: stripe
+  region: ''
+  families:
+  - finance
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 791
+    jobs_in_country: 53
+  enabled: true
+- name: MongoDB
+  system: greenhouse
+  token: mongodb
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 394
+    jobs_in_country: 11
+  enabled: true
+- name: GitLab
+  system: greenhouse
+  token: gitlab
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 255
+    jobs_in_country: 38
+  enabled: true
+- name: Twilio
+  system: greenhouse
+  token: twilio
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 109
+    jobs_in_country: 18
+  enabled: true
+- name: Mirakl
+  system: greenhouse
+  token: mirakl
+  region: ''
+  families:
+  - tech
+  - product_project
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 22
+    jobs_in_country: 3
+  enabled: true
+- name: Raisin
+  system: greenhouse
+  token: raisin
+  region: ''
+  families:
+  - finance
+  - tech
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 30
+    jobs_in_country: 4
+  enabled: true
+- name: Riot Games
+  system: greenhouse
+  token: riotgames
+  region: ''
+  families:
+  - tech
+  - product_project
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 203
+    jobs_in_country: 1
+  enabled: true
+- name: Figma
+  system: greenhouse
+  token: figma
+  region: ''
+  families:
+  - tech
+  - product_project
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 139
+    jobs_in_country: 19
+  enabled: true
+- name: Reddit
+  system: greenhouse
+  token: reddit
+  region: ''
+  families:
+  - tech
+  - product_project
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 148
+    jobs_in_country: 11
+  enabled: true
+- name: Robinhood
+  system: greenhouse
+  token: robinhood
+  region: ''
+  families:
+  - finance
+  - tech
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 166
+    jobs_in_country: 5
+  enabled: true
+- name: Catawiki
+  system: greenhouse
+  token: catawiki
+  region: ''
+  families:
+  - tech
+  - product_project
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 38
+    jobs_in_country: 3
+  enabled: true
+- name: Databricks
+  system: greenhouse
+  token: databricks
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 903
+    jobs_in_country: 47
+  enabled: true
+- name: Vercel
+  system: greenhouse
+  token: vercel
+  region: ''
+  families:
+  - tech
+  - product_project
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 87
+    jobs_in_country: 11
+  enabled: true
+- name: Anthropic
+  system: greenhouse
+  token: anthropic
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 658
+    jobs_in_country: 42
+  enabled: true
+- name: Palantir
+  system: lever
+  token: palantir
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 301
+    jobs_in_country: 46
+  enabled: true
+- name: Spotify
+  system: lever
+  token: spotify
+  region: ''
+  families:
+  - tech
+  - product_project
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 87
+    jobs_in_country: 33
+  enabled: true
+- name: Contentsquare
+  system: lever
+  token: contentsquare
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 28
+    jobs_in_country: 3
+  enabled: true
+- name: Pigment
+  system: lever
+  token: pigment
+  region: ''
+  families:
+  - tech
+  - data
+  - finance
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 122
+    jobs_in_country: 22
+  enabled: true
+- name: Kong
+  system: ashby
+  token: kong
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 124
+    jobs_in_country: 12
+  enabled: true
+- name: n8n
+  system: ashby
+  token: n8n
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 60
+    jobs_in_country: 36
+  enabled: true
+- name: Synthesia
+  system: ashby
+  token: synthesia
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 29
+    jobs_in_country: 18
+  enabled: true
+- name: ElevenLabs
+  system: ashby
+  token: elevenlabs
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 128
+    jobs_in_country: 42
+  enabled: true
+- name: Dust
+  system: ashby
+  token: dust
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 33
+    jobs_in_country: 8
+  enabled: true
+- name: DeepL
+  system: ashby
+  token: deepl
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 8
+    jobs_in_country: 4
+  enabled: true
+- name: Parloa
+  system: ashby
+  token: parloa
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 45
+    jobs_in_country: 4
+  enabled: true
+- name: Pennylane
+  system: ashby
+  token: pennylane
+  region: ''
+  families:
+  - finance
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 212
+    jobs_in_country: 5
+  enabled: true
+- name: Linear
+  system: ashby
+  token: linear
+  region: ''
+  families:
+  - tech
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 33
+    jobs_in_country: 2
+  enabled: true
+- name: Supabase
+  system: ashby
+  token: supabase
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 77
+    jobs_in_country: 1
+  enabled: true
+- name: PostHog
+  system: ashby
+  token: posthog
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 10
+    jobs_in_country: 1
+  enabled: true
+- name: Poolside
+  system: ashby
+  token: poolside
+  region: ''
+  families:
+  - tech
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 4
+    jobs_in_country: 1
+  enabled: true
+- name: Ashby
+  system: ashby
+  token: ashby
+  region: ''
+  families:
+  - tech
+  - product_project
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 77
+    jobs_in_country: 20
+  enabled: true
+- name: Modal
+  system: ashby
+  token: modal
+  region: ''
+  families:
+  - tech
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 53
+    jobs_in_country: 9
+  enabled: true
+- name: Baseten
+  system: ashby
+  token: baseten
+  region: ''
+  families:
+  - tech
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 103
+    jobs_in_country: 6
+  enabled: true
+- name: Cohere
+  system: ashby
+  token: cohere
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 127
+    jobs_in_country: 35
+  enabled: true
+- name: Perplexity
+  system: ashby
+  token: perplexity
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 147
+    jobs_in_country: 32
+  enabled: true
+- name: Notion
+  system: ashby
+  token: notion
+  region: ''
+  families:
+  - tech
+  - product_project
+  - data
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 166
+    jobs_in_country: 7
+  enabled: true
+- name: Ramp
+  system: ashby
+  token: ramp
+  region: ''
+  families:
+  - finance
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 181
+    jobs_in_country: 9
+  enabled: true
+- name: Plaid
+  system: ashby
+  token: plaid
+  region: ''
+  families:
+  - finance
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 141
+    jobs_in_country: 7
+  enabled: true
+- name: Bunq
+  system: recruitee
+  token: bunq
+  region: ''
+  families:
+  - finance
+  - tech
+  - data
+  - product_project
+  hub_cities: *id001
+  last_check:
+    status: ok
+    jobs_total: 24
+    jobs_in_country: 2
+  enabled: true

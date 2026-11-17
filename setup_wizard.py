@@ -298,6 +298,41 @@ def places_from(place: dict, remote: dict | None) -> list[dict]:
     return places
 
 
+def _stored_company(company, curated: bool = False) -> dict:
+    """One companies: entry. Old user-typed rows stay name, system, token, enabled."""
+    if isinstance(company, dict):
+        name = company["name"]
+        system = company["system"]
+        token = company.get("token") or ""
+        region = str(company.get("region") or "").strip()
+        families = list(company.get("families") or [])
+        jobs = company.get("jobs_in_country") or 0
+        curated = curated or bool(company.get("curated"))
+    else:
+        name = company.name
+        system = company.system
+        token = company.token or ""
+        region = company.region or ""
+        families = list(company.families or [])
+        jobs = company.jobs_in_country or 0
+        curated = curated or company.curated
+    entry = {
+        "name": name,
+        "system": system,
+        "token": token,
+        "enabled": True,
+    }
+    if region:
+        entry["region"] = region
+    if families:
+        entry["families"] = families
+    if curated:
+        entry["curated"] = True
+        if jobs:
+            entry["jobs_in_country"] = int(jobs)
+    return entry
+
+
 def build_config(
     roles: list[str],
     places: list[dict],
@@ -316,7 +351,22 @@ def build_config(
     source_choice: str | None = None,
     link_outs: list[str] | None = None,
 ) -> dict:
+    from source_map import curated_employers
+
     enabled = set(sources)
+    user_rows = [_stored_company(company) for company in companies]
+    curated_rows = []
+    if source_choice == "auto" or "company_pages" in enabled:
+        seen = {(row["system"], str(row.get("token") or "").casefold()) for row in user_rows}
+        for company in curated_employers(country, places, roles):
+            key = (company.system, company.token.casefold())
+            if key in seen:
+                continue
+            seen.add(key)
+            curated_rows.append(_stored_company(company, curated=True))
+    merged = user_rows + curated_rows
+    if merged:
+        enabled.add("company_pages")
     catalog = (
         ("company_pages", "company site"),
         ("arbeitnow", "job board"),
@@ -336,15 +386,7 @@ def build_config(
             {"id": source_id, "enabled": source_id in enabled, "kind": kind}
             for source_id, kind in catalog
         ],
-        "companies": [
-            {
-                "name": company["name"],
-                "system": company["system"],
-                "token": company["token"],
-                "enabled": True,
-            }
-            for company in companies
-        ],
+        "companies": merged,
         "country": country,
         "results_per_search": results_per_search,
         "posted_within_days": posted_within_days,
@@ -802,9 +844,10 @@ def _company_label(raw: str) -> str:
 
 
 def detect_system(url: str) -> tuple[str, str] | None:
-    """Hiring system and public token from a careers address, or None."""
-    if _is_eu_lever(url):
-        return None
+    """Hiring system and public token from a careers address, or None.
+
+    jobs.eu.lever.co uses the same token as Lever. The caller stores region "eu".
+    """
     parsed = urlparse(_career_url(url))
     host = (parsed.hostname or "").lower()
     parts = [part for part in parsed.path.split("/") if part]
@@ -812,7 +855,7 @@ def detect_system(url: str) -> tuple[str, str] | None:
         if parts:
             return "greenhouse", parts[0]
         return None
-    if host == "jobs.lever.co" and parts:
+    if host in {"jobs.lever.co", "jobs.eu.lever.co"} and parts:
         return "lever", parts[0]
     if host == "jobs.ashbyhq.com" and parts:
         return "ashby", parts[0]
@@ -898,13 +941,14 @@ def ask_companies(io: IO) -> list[dict]:
         raw = io.ask("> ").strip()
         if not raw:
             break
-        if _is_eu_lever(raw):
-            io.say("This is an EU Lever page, which is not supported yet. Skipped.")
-        elif _looks_like_url(raw):
+        if _looks_like_url(raw):
             detected = detect_system(raw)
             if detected:
                 system, token = detected
-                companies.append({"name": token, "system": system, "token": token})
+                company = {"name": token, "system": system, "token": token}
+                if _is_eu_lever(raw):
+                    company["region"] = "eu"
+                companies.append(company)
             else:
                 label = _company_label(raw)
                 system = ask_system(io, label)

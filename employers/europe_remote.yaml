@@ -1,0 +1,58 @@
+country: europe_remote
+checked_on: '2026-11-17'
+employers:
+- name: ElevenLabs
+  system: ashby
+  token: elevenlabs
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: []
+  last_check:
+    status: ok
+    jobs_total: 128
+    jobs_in_country: 9
+  enabled: true
+- name: Ashby
+  system: ashby
+  token: ashby
+  region: ''
+  families:
+  - tech
+  - product_project
+  - data
+  hub_cities: []
+  last_check:
+    status: ok
+    jobs_total: 77
+    jobs_in_country: 14
+  enabled: true
+- name: Supabase
+  system: ashby
+  token: supabase
+  region: ''
+  families:
+  - tech
+  - data
+  - product_project
+  hub_cities: []
+  last_check:
+    status: ok
+    jobs_total: 77
+    jobs_in_country: 4
+  enabled: true
+- name: Poolside
+  system: ashby
+  token: poolside
+  region: ''
+  families:
+  - tech
+  - data
+  hub_cities: []
+  last_check:
+    status: ok
+    jobs_total: 4
+    jobs_in_country: 3
+  enabled: true

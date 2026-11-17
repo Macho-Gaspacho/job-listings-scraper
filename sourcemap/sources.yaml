@@ -46,6 +46,54 @@ remote:
   remote: [remotive, we_work_remotely, remote_ok, working_nomads]
 # epso_traineeships is omitted: no public search URL with {q} and {loc} returned HTTP 200.
 graduate_link_outs: [un_careers_internships]
+# Big 4 and large banks have no public job API we can read. These are links to open.
+# Omitted after a failed open: kpmg_nl (careers URL redirected to the homepage),
+# rabobank (HTTP 403), intesa_sanpaolo (HTTP 404), bnp_paribas (HTTP 403),
+# pwc_fr and pwc_es (HTTP 404).
+employer_link_outs:
+  germany:
+    - deloitte_de_careers
+    - pwc_de_careers
+    - ey_de_careers
+    - kpmg_de_careers
+    - deutsche_bank_careers
+    - commerzbank_careers
+  uk:
+    - deloitte_uk_careers
+    - pwc_uk_careers
+    - ey_uk_careers
+    - kpmg_uk_careers
+    - barclays_careers
+    - hsbc_careers
+    - lloyds_careers
+  italy:
+    - deloitte_it_careers
+    - pwc_it_careers
+    - ey_it_careers
+    - kpmg_it_careers
+    - unicredit_careers
+  netherlands:
+    - deloitte_nl_careers
+    - pwc_nl_careers
+    - ey_nl_careers
+    - ing_careers
+    - abn_amro_careers
+  france:
+    - deloitte_fr_careers
+    - ey_fr_careers
+    - kpmg_fr_careers
+    - societe_generale_careers
+  spain:
+    - deloitte_es_careers
+    - ey_es_careers
+    - kpmg_es_careers
+    - santander_careers
+    - bbva_careers
+  poland:
+    - deloitte_pl_careers
+    - pwc_pl_careers
+    - ey_pl_careers
+    - kpmg_pl_careers
 auto_words:
   - any
   - any site
@@ -102,3 +150,111 @@ link_outs:
   un_careers_internships:
     label: UN Careers internships
     url: "https://careers.un.org/jobopening?language=en&keyword={q}&location={loc}"
+  deloitte_de_careers:
+    label: Deloitte Germany careers
+    url: "https://www.deloitte.com/de/de/careers.html"
+  pwc_de_careers:
+    label: PwC Germany careers
+    url: "https://jobs.pwc.de/de/de/search-results"
+  ey_de_careers:
+    label: EY Germany careers
+    url: "https://careers.ey.com/ey/search/?q={q}&locationsearch={loc}"
+  kpmg_de_careers:
+    label: KPMG Germany careers
+    url: "https://karriere.kpmg.de/"
+  deutsche_bank_careers:
+    label: Deutsche Bank careers
+    url: "https://careers.db.com/professionals/search-roles/"
+  commerzbank_careers:
+    label: Commerzbank careers
+    url: "https://jobs.commerzbank.com/index.php?ac=search_result"
+  deloitte_uk_careers:
+    label: Deloitte UK careers
+    url: "https://www.deloitte.com/uk/en/careers.html"
+  pwc_uk_careers:
+    label: PwC UK careers
+    url: "https://jobs.pwc.co.uk/uk/en/search-results"
+  ey_uk_careers:
+    label: EY UK careers
+    url: "https://careers.ey.com/ey/search/?q={q}&locationsearch={loc}"
+  kpmg_uk_careers:
+    label: KPMG UK careers
+    url: "https://www.kpmgcareers.co.uk/search/"
+  barclays_careers:
+    label: Barclays careers
+    url: "https://search.jobs.barclays/search-jobs"
+  hsbc_careers:
+    label: HSBC careers
+    url: "https://mycareer.hsbc.com/en_GB/external/SearchJobs"
+  lloyds_careers:
+    label: Lloyds Banking Group careers
+    url: "https://lbg.wd3.myworkdayjobs.com/LBG_Careers"
+  deloitte_it_careers:
+    label: Deloitte Italy careers
+    url: "https://www.deloitte.com/it/it/careers.html"
+  pwc_it_careers:
+    label: PwC Italy careers
+    url: "https://jobs-it.pwc.com/it/it"
+  ey_it_careers:
+    label: EY Italy careers
+    url: "https://careers.ey.com/ey/search/?q={q}&locationsearch={loc}"
+  kpmg_it_careers:
+    label: KPMG Italy careers
+    url: "https://kpmg.com/it/it/careers.html"
+  unicredit_careers:
+    label: UniCredit careers
+    url: "https://careers.unicredit.eu/"
+  deloitte_nl_careers:
+    label: Deloitte Netherlands careers
+    url: "https://www.deloitte.com/nl/nl/careers.html"
+  pwc_nl_careers:
+    label: PwC Netherlands careers
+    url: "https://jobs.pwc.nl/nl/nl/search-results"
+  ey_nl_careers:
+    label: EY Netherlands careers
+    url: "https://careers.ey.com/ey/search/?q={q}&locationsearch={loc}"
+  ing_careers:
+    label: ING careers
+    url: "https://careers.ing.com/en/search-jobs"
+  abn_amro_careers:
+    label: ABN AMRO careers
+    url: "https://www.werkenbijabnamro.nl/vacatures"
+  deloitte_fr_careers:
+    label: Deloitte France careers
+    url: "https://www.deloitte.com/fr/fr/careers.html"
+  ey_fr_careers:
+    label: EY France careers
+    url: "https://careers.ey.com/ey/search/?q={q}&locationsearch={loc}"
+  kpmg_fr_careers:
+    label: KPMG France careers
+    url: "https://kpmg.com/fr/fr/carrieres.html"
+  societe_generale_careers:
+    label: Société Générale careers
+    url: "https://careers.societegenerale.com/en/search"
+  deloitte_es_careers:
+    label: Deloitte Spain careers
+    url: "https://www.deloitte.com/es/es/careers.html"
+  ey_es_careers:
+    label: EY Spain careers
+    url: "https://careers.ey.com/ey/search/?q={q}&locationsearch={loc}"
+  kpmg_es_careers:
+    label: KPMG Spain careers
+    url: "https://kpmg.com/es/es/carreras.html"
+  santander_careers:
+    label: Santander careers
+    url: "https://www.santandercareers.com/"
+  bbva_careers:
+    label: BBVA careers
+    url: "https://www.bbva.com/en/careers/"
+  deloitte_pl_careers:
+    label: Deloitte Poland careers
+    url: "https://www.deloitte.com/pl/pl/careers.html"
+  pwc_pl_careers:
+    label: PwC Poland careers
+    url: "https://kariera.pwc.pl/pl/pl/home"
+  ey_pl_careers:
+    label: EY Poland careers
+    url: "https://careers.ey.com/ey/search/?q={q}&locationsearch={loc}"
+  kpmg_pl_careers:
+    label: KPMG Poland careers
+    url: "https://kpmg.com/pl/pl/kariera.html"

@@ -191,7 +191,7 @@ def test_germany_explanation_names_the_mix():
     result = recommend("germany", [_office("Berlin, Germany")], ["software engineer"])
     text = "\n".join(result.explanation)
     assert text.splitlines()[0] == "Recommended for a tech job in Germany:"
-    assert "company career pages, if you add companies in the next step." in text
+    assert "employers that hire tech people in Germany, plus any you add)." in text
     assert "Then: Arbeitnow." in text
     assert "Remote boards:" not in text
     assert "Welcome to the Jungle" in text

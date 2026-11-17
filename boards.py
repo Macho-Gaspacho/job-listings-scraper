@@ -11,15 +11,20 @@ They are not searched once per role, which keeps the number of requests small.
 from __future__ import annotations
 
 import json
+import math
 import re
 import ssl
+import threading
 import time
+import unicodedata
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from html import unescape
+from urllib.parse import urlparse
 
 from config import Company, Settings
 from enrichment import describe_posting, job_type_text, passes_filters
@@ -689,7 +694,8 @@ def _company_jobs(company: Company, getter) -> list[dict]:
         body = getter(f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true")
         return parse_greenhouse(_json_bytes(body), company.name)
     if system == "lever":
-        body = getter(f"https://api.lever.co/v0/postings/{token}?mode=json")
+        host = "api.eu.lever.co" if (company.region or "").casefold() == "eu" else "api.lever.co"
+        body = getter(f"https://{host}/v0/postings/{token}?mode=json")
         payload = _json_bytes(body)
         if not isinstance(payload, list):
             raise RuntimeError("Lever did not return a job list")
@@ -752,6 +758,189 @@ def _remote_jobs(source_id: str, getter, settings: Settings) -> list[dict]:
     raise RuntimeError(f"unknown remote board '{source_id}'")
 
 
+_CURATED_CAP = 60
+_HOST_GAP_SECONDS = 0.5
+
+
+def company_host(company: Company) -> str:
+    """The host a company request is limited against."""
+    system = company.system
+    if system == "greenhouse":
+        return "boards-api.greenhouse.io"
+    if system == "lever":
+        if (company.region or "").casefold() == "eu":
+            return "api.eu.lever.co"
+        return "api.lever.co"
+    if system == "ashby":
+        return "api.ashbyhq.com"
+    if system == "workable":
+        return "apply.workable.com"
+    if system == "recruitee":
+        return "recruitee.com"
+    if system == "teamtailor":
+        return (urlparse(company.token).hostname or "teamtailor").lower()
+    if system == "bendingspoons":
+        return "jobs.bendingspoons.com"
+    return system
+
+
+def _fold_name(value: object) -> str:
+    return unicodedata.normalize("NFKC", "" if value is None else str(value)).casefold()
+
+
+def _search_family(roles) -> str:
+    from source_map import _family_of
+
+    family, _graduate = _family_of([str(role) for role in roles or []])
+    return family
+
+
+def select_companies(companies, roles) -> list[Company]:
+    """User-typed companies, then up to 60 curated ones that fit the role.
+
+    The same public board is kept once. A company the user typed wins.
+    Curated boards are the ones with the most jobs in the country.
+    """
+    family = _search_family(roles)
+    enabled = [company for company in companies or [] if company.enabled]
+    users: list[Company] = []
+    user_keys: set[tuple[str, str]] = set()
+    for company in enabled:
+        if company.curated:
+            continue
+        key = (company.system, company.token.casefold())
+        if key in user_keys:
+            continue
+        user_keys.add(key)
+        users.append(company)
+    curated: list[Company] = []
+    seen: set[tuple[str, str]] = set()
+    ranked = sorted(
+        (company for company in enabled if company.curated),
+        key=lambda company: (-int(company.jobs_in_country or 0), _fold_name(company.name)),
+    )
+    for company in ranked:
+        key = (company.system, company.token.casefold())
+        if key in user_keys or key in seen:
+            continue
+        names = {item.casefold() for item in company.families}
+        if family != "other" and family not in names:
+            continue
+        seen.add(key)
+        curated.append(company)
+        if len(curated) >= _CURATED_CAP:
+            break
+    return users + curated
+
+
+def _http_code(exc: BaseException) -> int | None:
+    code = getattr(exc, "code", None)
+    if isinstance(code, int):
+        return code
+    match = re.search(r"\bHTTP(?: Error)? (\d{3})\b", str(exc))
+    if match:
+        return int(match.group(1))
+    cause = getattr(exc, "__cause__", None)
+    if isinstance(cause, BaseException) and cause is not exc:
+        return _http_code(cause)
+    return None
+
+
+def _blocked_or_missing(exc: BaseException) -> bool:
+    return _http_code(exc) in {403, 404, 429}
+
+
+class _HostGate:
+    """One request at a time per host, with a gap between them."""
+
+    def __init__(self, sleep, clock) -> None:
+        self.sleep = sleep
+        self.clock = clock
+        self._guard = threading.Lock()
+        self._locks: dict[str, threading.Lock] = {}
+        self._last: dict[str, float] = {}
+
+    def run(self, host: str, fn):
+        with self._guard:
+            lock = self._locks.setdefault(host, threading.Lock())
+        with lock:
+            previous = self._last.get(host)
+            now = self.clock()
+            if previous is not None and now - previous < _HOST_GAP_SECONDS:
+                self.sleep(_HOST_GAP_SECONDS - (now - previous))
+                now = self.clock()
+            self._last[host] = now
+            return fn()
+
+
+def _row_sort_key(row: dict) -> tuple[str, str, str]:
+    return (
+        _fold_name(row.get("company")),
+        _fold_name(row.get("title")),
+        str(row.get("url") or ""),
+    )
+
+
+def collect_company_pages(
+    companies,
+    getter,
+    settings: Settings,
+    sleep=time.sleep,
+    clock=None,
+    roles=None,
+) -> tuple[list[dict], int]:
+    """Read company career pages on a few threads, without crowding one host.
+
+    Returns the kept rows and how many company pages failed.
+    """
+    if clock is None:
+        clock = time.monotonic
+    if roles is None:
+        roles = list(getattr(settings, "roles", None) or [])
+    selected = select_companies(companies, roles)
+    if not selected:
+        return [], 0
+    seconds = math.ceil(len(selected) / 4 * 1.5)
+    print(f"Reading {len(selected)} company career pages (about {seconds} s)...", flush=True)
+    gate = _HostGate(sleep, clock)
+    results: dict[int, tuple[list[dict], BaseException | None]] = {}
+
+    def _one(company: Company):
+        try:
+            jobs = gate.run(company_host(company), lambda: _company_jobs(company, getter))
+            return company, jobs, None
+        except Exception as exc:
+            return company, [], exc
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = [pool.submit(_one, company) for company in selected]
+        for future in as_completed(futures):
+            company, jobs, exc = future.result()
+            results[id(company)] = (jobs, exc)
+
+    failures = 0
+    blocked: list[str] = []
+    kept: list[dict] = []
+    for company in selected:
+        jobs, exc = results[id(company)]
+        if exc is not None:
+            failures += 1
+            if _blocked_or_missing(exc):
+                blocked.append(company.name)
+            else:
+                report_skip(exc)
+            continue
+        kept.extend(filter_board_jobs(jobs, settings, "company site"))
+    kept.sort(key=_row_sort_key)
+    if blocked:
+        names = ", ".join(blocked)
+        print(
+            f"Skipped {len(blocked)} company pages (blocked or not found): {names}.",
+            flush=True,
+        )
+    return kept, failures
+
+
 def collect_board_listings(settings: Settings, pause=time.sleep, getter=http_get) -> tuple[list[dict], int]:
     """Fetch every enabled company page and remote board.
 
@@ -760,33 +949,27 @@ def collect_board_listings(settings: Settings, pause=time.sleep, getter=http_get
     rows: list[dict] = []
     failures = 0
     steps: list[tuple[str, object]] = []
-    if settings.company_pages_enabled:
-        for company in settings.companies or []:
-            if company.enabled:
-                steps.append(("company", company))
     for source_id in getattr(settings, "job_boards", None) or []:
         steps.append(("job", source_id))
     for source_id in settings.remote_boards or []:
         steps.append(("remote", source_id))
+    if settings.company_pages_enabled:
+        chosen = select_companies(settings.companies or [], settings.roles)
+        if chosen:
+            found, failed = collect_company_pages(
+                settings.companies or [],
+                getter,
+                settings,
+                sleep=pause,
+                roles=settings.roles,
+            )
+            rows.extend(found)
+            failures += failed
+            if steps and settings.pause_seconds:
+                pause(settings.pause_seconds)
 
     for index, (kind, target) in enumerate(steps):
-        if kind == "company":
-            company = target
-            label = f"{company.name} ({company.system})"
-            print(f"Reading {label} careers page...", flush=True)
-            try:
-                found = filter_board_jobs(
-                    _company_jobs(company, getter),
-                    settings,
-                    "company site",
-                )
-            except Exception as exc:
-                failures += 1
-                report_skip(exc)
-                found = []
-            else:
-                print(f"  Kept {len(found)} matching listings.", flush=True)
-        elif kind == "job":
+        if kind == "job":
             source_id = str(target)
             print(f"Reading job board {source_id.replace('_', ' ')}...", flush=True)
             try:
