@@ -223,16 +223,29 @@ def _whole_board(job: dict) -> bool:
     return _source_name(job) in _WHOLE_BOARD_SOURCES
 
 
+def _significant_words(phrase: str) -> tuple[str, ...]:
+    """Words that count toward a title match. Two letters or fewer are ignored."""
+    return tuple(word for word in normalise(phrase) if len(word) > 2)
+
+
 def _title_matches_role(title: str, role: str, phrases: list[str] | None) -> bool:
-    """True when the title contains the typed role, or an accepted local title.
+    """True when the title contains the typed role, or a multi-word synonym.
 
     Comparison uses the same normalisation as other title checks. Words of
     two letters or fewer are ignored. The words may be in any order.
+    A synonym from title_keywords counts only when it has at least two words
+    longer than two letters. A single-word synonym is ignored. The typed
+    role itself still counts, including when that role is one word.
     """
     haystack = normalise(title)
     seen: set[tuple[str, ...]] = set()
-    for phrase in (role, *(phrases or [])):
-        words = tuple(word for word in normalise(phrase) if len(word) > 2)
+    candidates = [_significant_words(role)]
+    for phrase in phrases or []:
+        words = _significant_words(phrase)
+        if len(words) < 2:
+            continue
+        candidates.append(words)
+    for words in candidates:
         if not words or words in seen:
             continue
         seen.add(words)
@@ -280,8 +293,14 @@ def filter_board_jobs(
     settings: Settings,
     source_type: str,
     check_region_text: bool = False,
+    curated: bool = False,
 ) -> list[dict]:
-    """Keep jobs whose title matches a role and whose place matches the user's rules."""
+    """Keep jobs whose title matches a role and whose place matches the user's rules.
+
+    Whole-board feeds have no keyword search, so a title is kept only when it
+    matches the typed role. Curated employers are the same: the user did not
+    pick those companies. A company the user typed is left unchanged.
+    """
     rules = _location_rules(settings)
     kept = []
     for job in jobs:
@@ -296,7 +315,7 @@ def filter_board_jobs(
             settings.title_keywords,
             settings.require_title_match,
         )
-        if _whole_board(job):
+        if _whole_board(job) or curated:
             keywords = settings.title_keywords or {}
             roles = [
                 role
@@ -930,7 +949,9 @@ def collect_company_pages(
             else:
                 report_skip(exc)
             continue
-        kept.extend(filter_board_jobs(jobs, settings, "company site"))
+        kept.extend(
+            filter_board_jobs(jobs, settings, "company site", curated=company.curated)
+        )
     kept.sort(key=_row_sort_key)
     if blocked:
         names = ", ".join(blocked)

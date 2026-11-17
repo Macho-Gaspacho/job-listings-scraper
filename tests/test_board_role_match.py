@@ -76,10 +76,16 @@ def test_whole_board_titles_match_the_typed_role(tmp_path, case):
 
 
 def test_an_accepted_synonym_keeps_a_whole_board_title(tmp_path):
+    settings = _settings(tmp_path, "software engineer", ["software entwickler"])
+    job, source_type = _row("arbeitnow", "Software Entwickler", "Frankfurt am Main", False)
+    kept = filter_board_jobs([job], settings, source_type)
+    assert [row["title"] for row in kept] == ["Software Entwickler"]
+
+
+def test_a_single_word_synonym_does_not_keep_a_whole_board_title(tmp_path):
     settings = _settings(tmp_path, "software engineer", ["softwareentwickler"])
     job, source_type = _row("arbeitnow", "Softwareentwickler", "Frankfurt am Main", False)
-    kept = filter_board_jobs([job], settings, source_type)
-    assert [row["title"] for row in kept] == ["Softwareentwickler"]
+    assert filter_board_jobs([job], settings, source_type) == []
 
 
 def test_short_words_in_the_role_are_ignored(tmp_path):

@@ -1,0 +1,74 @@
+{
+  "cases": [
+    {
+      "role": "risk manager",
+      "curated": true,
+      "title": "Senior Risk Manager",
+      "kept": true
+    },
+    {
+      "role": "risk manager",
+      "curated": true,
+      "title": "Manager, Risk & Compliance",
+      "kept": true
+    },
+    {
+      "role": "risk manager",
+      "curated": true,
+      "title": "Account Manager",
+      "kept": false
+    },
+    {
+      "role": "risk manager",
+      "curated": true,
+      "title": "Risk Analyst",
+      "kept": false
+    },
+    {
+      "role": "investment banking analyst",
+      "keywords": ["analyst"],
+      "curated": true,
+      "title": "Investment Banking Analyst",
+      "kept": true
+    },
+    {
+      "role": "investment banking analyst",
+      "keywords": ["analyst"],
+      "curated": true,
+      "title": "Data Analyst",
+      "kept": false
+    },
+    {
+      "role": "investment banking analyst",
+      "keywords": ["analyst"],
+      "curated": true,
+      "title": "Financial Analyst",
+      "kept": false
+    },
+    {
+      "role": "investment banking analyst",
+      "keywords": ["financial analyst"],
+      "curated": true,
+      "title": "Financial Analyst",
+      "kept": true
+    },
+    {
+      "role": "менеджер проектов",
+      "curated": true,
+      "title": "Senior Backend Engineer",
+      "kept": false
+    },
+    {
+      "role": "software engineer",
+      "curated": true,
+      "title": "Senior Software Engineer",
+      "kept": true
+    },
+    {
+      "role": "risk manager",
+      "curated": false,
+      "title": "Account Manager",
+      "kept": true
+    }
+  ]
+}

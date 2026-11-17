@@ -25,6 +25,11 @@ class Clock:
             self.now += float(seconds)
 
 
+def _quiet_clock() -> Clock:
+    """A clock that advances on sleep, so a test never waits in real time."""
+    return Clock()
+
+
 def _settings(tmp_path, role: str = "Data Analyst"):
     path = tmp_path / "config.yaml"
     path.write_text(
@@ -169,8 +174,14 @@ def test_blocked_and_missing_pages_are_named(tmp_path, capsys):
         Company("Missing", "greenhouse", "missing"),
         Company("Limited", "lever", "limited"),
     ]
+    clock = _quiet_clock()
     rows, failures = collect_company_pages(
-        companies, getter, settings, roles=["legal counsel"]
+        companies,
+        getter,
+        settings,
+        sleep=clock.sleep,
+        clock=clock.time,
+        roles=["legal counsel"],
     )
     text = capsys.readouterr().out
     assert failures == 2
@@ -196,10 +207,13 @@ def test_user_typed_company_is_queried_once(tmp_path):
         families=("data",),
         jobs_in_country=80,
     )
+    clock = _quiet_clock()
     collect_company_pages(
         [curated, user],
         getter,
         _settings(tmp_path),
+        sleep=clock.sleep,
+        clock=clock.time,
         roles=["data analyst"],
     )
     assert len(calls) == 1
@@ -216,7 +230,15 @@ def test_curated_pages_follow_the_role_family(tmp_path):
         Company("Alpha", "greenhouse", "alpha", curated=True, families=("tech",), jobs_in_country=9),
         Company("Beta", "greenhouse", "beta", curated=True, families=("data",), jobs_in_country=8),
     ]
-    collect_company_pages(companies, getter, _settings(tmp_path), roles=["data analyst"])
+    clock = _quiet_clock()
+    collect_company_pages(
+        companies,
+        getter,
+        _settings(tmp_path),
+        sleep=clock.sleep,
+        clock=clock.time,
+        roles=["data analyst"],
+    )
     assert calls == ["beta"]
 
 
@@ -231,7 +253,15 @@ def test_other_family_queries_curated_employers(tmp_path):
         Company("Alpha", "greenhouse", "alpha", curated=True, families=("tech",), jobs_in_country=9),
         Company("Beta", "greenhouse", "beta", curated=True, families=("data",), jobs_in_country=8),
     ]
-    collect_company_pages(companies, getter, _settings(tmp_path), roles=["legal counsel"])
+    clock = _quiet_clock()
+    collect_company_pages(
+        companies,
+        getter,
+        _settings(tmp_path),
+        sleep=clock.sleep,
+        clock=clock.time,
+        roles=["legal counsel"],
+    )
     assert set(calls) == {"alpha", "beta"}
 
 
@@ -253,7 +283,15 @@ def test_curated_cap_keeps_the_largest_boards(tmp_path):
         )
         for index in range(1, 71)
     ]
-    collect_company_pages(companies, getter, _settings(tmp_path), roles=["legal counsel"])
+    clock = _quiet_clock()
+    collect_company_pages(
+        companies,
+        getter,
+        _settings(tmp_path),
+        sleep=clock.sleep,
+        clock=clock.time,
+        roles=["legal counsel"],
+    )
     assert set(calls) == {f"c{index:02d}" for index in range(11, 71)}
     assert len(calls) == 60
 
@@ -269,7 +307,15 @@ def test_disabled_company_is_not_queried(tmp_path):
         Company("Off", "greenhouse", "off", enabled=False, curated=True, families=("data",)),
         Company("On", "greenhouse", "on", curated=True, families=("data",), jobs_in_country=3),
     ]
-    collect_company_pages(companies, getter, _settings(tmp_path), roles=["data analyst"])
+    clock = _quiet_clock()
+    collect_company_pages(
+        companies,
+        getter,
+        _settings(tmp_path),
+        sleep=clock.sleep,
+        clock=clock.time,
+        roles=["data analyst"],
+    )
     assert calls == ["on"]
 
 

@@ -222,10 +222,17 @@ def _run_search(config_path: Path, fetch=None, getter=None, verbose: bool = Fals
         return 1
 
     seen = load_seen(settings.seen_file)
+    # A stand-in getter means this run is a test or an offline replay.
+    # The live search still waits between requests.
+    def _no_pause(_seconds: float) -> None:
+        return None
+
     if getter is None:
         board_rows, board_failures = collect_board_listings(settings)
     else:
-        board_rows, board_failures = collect_board_listings(settings, getter=getter)
+        board_rows, board_failures = collect_board_listings(
+            settings, pause=_no_pause, getter=getter
+        )
     aggregator_rows: list[dict] = []
     aggregator_failures = 0
     if settings.sites:
@@ -235,7 +242,11 @@ def _run_search(config_path: Path, fetch=None, getter=None, verbose: bool = Fals
                 return fetch(role, place, site)
             return fetch_listings(settings, role, place, site, verbose=verbose)
 
-        aggregator_rows, aggregator_failures = collect_listings(settings, run_fetch)
+        aggregator_rows, aggregator_failures = collect_listings(
+            settings,
+            run_fetch,
+            pause=time.sleep if getter is None else _no_pause,
+        )
     # Dedupe again across company pages, remote boards, and Indeed/LinkedIn.
     rows = dedupe(board_rows + aggregator_rows)
     rows = sort_rows(apply_new_flags(rows, seen))
