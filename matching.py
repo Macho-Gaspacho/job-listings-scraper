@@ -46,3 +46,31 @@ def phrase_matches(text: object, phrase: object) -> bool:
         elif needle not in haystack:
             return False
     return True
+
+
+def _same_token(token: str, needle: str) -> bool:
+    """One normalised word. A trailing * still means "starts with"."""
+    if needle.endswith("*"):
+        prefix = needle[:-1]
+        return bool(prefix) and token.startswith(prefix)
+    return token == needle
+
+
+def sequence_matches(text: object, phrase: object) -> bool:
+    """True when the words of phrase appear in text in the same order, together.
+
+    The same normalise as phrase_matches is used, so capitals, accents, and
+    punctuation do not matter. The words have to be consecutive. A trailing *
+    keeps its prefix meaning.
+    """
+    haystack = normalise(text)
+    needles = normalise(phrase)
+    if not needles or len(needles) > len(haystack):
+        return False
+    width = len(needles)
+    last = len(haystack) - width
+    for start in range(last + 1):
+        window = haystack[start : start + width]
+        if all(_same_token(token, needle) for token, needle in zip(window, needles)):
+            return True
+    return False

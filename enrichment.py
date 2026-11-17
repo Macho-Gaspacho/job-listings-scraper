@@ -7,12 +7,14 @@ whole-word rules as job titles.
 
 from __future__ import annotations
 
+import contextvars
+from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
 
 import yaml
 
-from matching import normalise, phrase_matches
+from matching import normalise, phrase_matches, sequence_matches
 
 
 JOB_TYPES = ("Full-time", "Part-time", "Contract", "Internship", "Temporary")
@@ -132,6 +134,50 @@ def load_signals() -> dict:
         "visa_no": _phrase_list(loaded.get("visa_no"), "visa_no"),
         "visa_yes": _phrase_list(loaded.get("visa_yes"), "visa_yes"),
     }
+
+
+_ACTIVE_CANDIDATE: contextvars.ContextVar = contextvars.ContextVar(
+    "active_candidate", default=None
+)
+
+
+@contextmanager
+def bind_candidate(candidate):
+    """Show these answers to describe_posting while rows are built.
+
+    Indeed and LinkedIn rows are built in a function this search cannot
+    change. The answers are read from here when that function calls
+    describe_posting without passing them.
+    """
+    token = _ACTIVE_CANDIDATE.set(candidate)
+    try:
+        yield
+    finally:
+        _ACTIVE_CANDIDATE.reset(token)
+
+
+def _resolved_candidate(candidate):
+    if candidate is not None:
+        return candidate
+    return _ACTIVE_CANDIDATE.get()
+
+
+@lru_cache(maxsize=1)
+def _posting_words() -> dict[str, frozenset[str]]:
+    """Distinct normalised words that mark the language a posting is written in."""
+    loaded = yaml.safe_load(signals_path().read_text(encoding="utf-8")) or {}
+    block = loaded.get("posting_words") or {}
+    if not isinstance(block, dict):
+        raise ValueError("posting_words in signals/requirements.yaml should be a group of lists.")
+    found = {}
+    for name, words in block.items():
+        tokens = set()
+        for word in _phrase_list(words, str(name)):
+            parts = normalise(word)
+            if len(parts) == 1:
+                tokens.add(parts[0])
+        found[str(name)] = frozenset(tokens)
+    return found
 
 
 def _phrase_list(value: object, name: str) -> tuple[str, ...]:
@@ -332,7 +378,7 @@ def detect_languages(text: object, signals: dict | None = None) -> list[str]:
     table = load_signals() if signals is None else signals
     found = []
     for name, phrases in table["languages"].items():
-        if any(phrase_matches(text, phrase) for phrase in phrases):
+        if any(sequence_matches(text, phrase) for phrase in phrases):
             found.append(str(name))
     return found
 
@@ -341,10 +387,11 @@ def detect_visa(text: object, signals: dict | None = None) -> str:
     """No sponsorship, Sponsorship offered, or Unknown.
 
     Both kinds of sentence in one posting stay Unknown.
+    The words of a phrase have to appear together, in that order.
     """
     table = load_signals() if signals is None else signals
-    denied = any(phrase_matches(text, phrase) for phrase in table["visa_no"])
-    offered = any(phrase_matches(text, phrase) for phrase in table["visa_yes"])
+    denied = any(sequence_matches(text, phrase) for phrase in table["visa_no"])
+    offered = any(sequence_matches(text, phrase) for phrase in table["visa_yes"])
     if denied and offered:
         return _VISA_UNKNOWN
     if denied:
@@ -352,6 +399,63 @@ def detect_visa(text: object, signals: dict | None = None) -> str:
     if offered:
         return _VISA_YES
     return _VISA_UNKNOWN
+
+
+def visa_fit(visa_status: str, needs_visa: bool | None) -> str:
+    """How this posting fits someone who may need sponsorship.
+
+    Blank when the question was skipped or the answer was no.
+    """
+    if needs_visa is None or needs_visa is False:
+        return ""
+    if visa_status == _VISA_YES:
+        return "Sponsorship mentioned"
+    if visa_status == _VISA_UNKNOWN:
+        return "Not stated"
+    if visa_status == _VISA_NO:
+        return "Says no sponsorship"
+    return ""
+
+
+def posting_language(text: object) -> str:
+    """The language the posting is written in, or blank when it is not clear.
+
+    A short description stays blank. The winning language needs at least six
+    of its listed words, and at least two more than the next language.
+    """
+    words = normalise(text)
+    if len(words) < 30:
+        return ""
+    present = set(words)
+    counts = [(name, len(listed & present)) for name, listed in _posting_words().items()]
+    if not counts:
+        return ""
+    counts.sort(key=lambda item: (-item[1], item[0]))
+    best_name, best = counts[0]
+    runner = counts[1][1] if len(counts) > 1 else 0
+    if best >= 6 and best >= runner + 2:
+        return best_name
+    return ""
+
+
+def language_fit(required, posting_lang: str, spoken) -> str:
+    """How the posting's languages fit the languages the person can work in.
+
+    Blank when that question was skipped. A required language they did not
+    list wins over the language the posting is written in.
+    """
+    if spoken is None:
+        return ""
+    known = {str(name) for name in spoken}
+    missing = [str(name) for name in required if str(name) not in known]
+    if missing:
+        return "Needs " + ", ".join(missing)
+    written = str(posting_lang or "")
+    if written and written not in known:
+        return f"Posting in {written}"
+    if required or written:
+        return "OK"
+    return "Not stated"
 
 
 def visa_text(status: str) -> str:
@@ -371,8 +475,13 @@ def visa_status(value: object) -> str:
     return _VISA_UNKNOWN
 
 
-def describe_posting(hit: dict) -> dict:
-    """Fields that can be filtered and written to the spreadsheet."""
+def describe_posting(hit: dict, candidate=None) -> dict:
+    """Fields that can be filtered and written to the spreadsheet.
+
+    candidate is the visa and language answers. When it is omitted, the
+    answers bound for this search are used. Skipped questions leave the
+    fit columns blank.
+    """
     title = _text(hit.get("title"))
     low = _first_amount(hit, "min_amount", "salary_min")
     high = _first_amount(hit, "max_amount", "salary_max")
@@ -384,7 +493,12 @@ def describe_posting(hit: dict) -> dict:
             if _text(hit.get(key)):
                 raw_type = hit.get(key)
                 break
-    languages = detect_languages(hit.get("description") or "")
+    description = hit.get("description") or ""
+    languages = detect_languages(description)
+    visa = detect_visa(description)
+    chosen = _resolved_candidate(candidate)
+    needs_visa = None if chosen is None else getattr(chosen, "needs_visa", None)
+    spoken = None if chosen is None else getattr(chosen, "languages", None)
     remote = remote_label(hit.get("is_remote")) if "is_remote" in hit else "Unknown"
     return {
         "salary": format_salary(low, high, currency, period),
@@ -396,7 +510,9 @@ def describe_posting(hit: dict) -> dict:
         "is_remote": remote,
         "level": infer_level(title, hit.get("job_level")),
         "languages": ", ".join(languages),
-        "visa": visa_text(detect_visa(hit.get("description") or "")),
+        "visa": visa_text(visa),
+        "visa_fit": visa_fit(visa, needs_visa),
+        "language_fit": language_fit(languages, posting_language(description), spoken),
     }
 
 

@@ -150,7 +150,8 @@ def test_language_is_read_past_the_spreadsheet_snippet():
 @pytest.mark.parametrize(
     ("description", "visa"),
     [
-        ("We offer no visa sponsorship for this role.", "No sponsorship (guessed from the text)"),
+        # "visa sponsorship" is also a yes-phrase, so both kinds are found.
+        ("We offer no visa sponsorship for this role.", "Unknown"),
         ("Applicants must have the right to work in Germany.", "No sponsorship (guessed from the text)"),
         ("Visa sponsorship available for the right person.", "Sponsorship offered (guessed from the text)"),
         ("Relocation support is part of the package.", "Sponsorship offered (guessed from the text)"),

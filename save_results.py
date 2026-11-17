@@ -22,6 +22,9 @@ HEADER_FILL = PatternFill("solid", fgColor="1F4E79")
 HEADER_FONT = Font(bold=True, color="FFFFFF")
 NEW_FONT = Font(bold=True, color="1B7A3A")
 LINK_FONT = Font(color="0563C1", underline="single")
+# Light red for a visa or language blocker, light green when sponsorship is mentioned.
+FIT_BLOCK_FILL = PatternFill("solid", fgColor="FFF4CCCC")
+FIT_GOOD_FILL = PatternFill("solid", fgColor="FFD9EAD3")
 
 # Characters Excel would treat as the start of a formula, including CSV injection.
 _FORMULA_STARTS = ("=", "+", "-", "@", "\t", "\r")
@@ -239,6 +242,16 @@ def _place_sentence(place_names: list[str] | None) -> str:
     return prefix + f"Place searched is {shown}."
 
 
+def _fit_fill(key: str, value: object):
+    """A light fill for a fit cell, or None when the cell stays plain."""
+    text = "" if value is None else str(value)
+    if key == "visa_fit" and text == "Sponsorship mentioned":
+        return FIT_GOOD_FILL
+    if text == "Says no sponsorship" or text.startswith("Needs ") or text.startswith("Posting in "):
+        return FIT_BLOCK_FILL
+    return None
+
+
 def _http_link(url: object) -> str | None:
     """An http(s) address, or None. Other schemes are left as plain text."""
     if not isinstance(url, str):
@@ -266,6 +279,11 @@ def _write_excel(rows: list[dict], path: Path, place_names: list[str] | None = N
     description_column = next(
         index for index, (key, _) in enumerate(OUTPUT_FIELDS, start=1) if key == "description"
     )
+    fit_columns = [
+        (key, index)
+        for index, (key, _) in enumerate(OUTPUT_FIELDS, start=1)
+        if key in {"visa_fit", "language_fit"}
+    ]
     for row in rows:
         values = [safe_cell(row.get(key, "")) for key, _ in OUTPUT_FIELDS]
         sheet.append(values)
@@ -282,6 +300,10 @@ def _write_excel(rows: list[dict], path: Path, place_names: list[str] | None = N
         sheet.cell(row_number, description_column).alignment = Alignment(
             wrap_text=True, vertical="top"
         )
+        for key, column in fit_columns:
+            fill = _fit_fill(key, row.get(key, ""))
+            if fill is not None:
+                sheet.cell(row_number, column).fill = fill
         sheet.row_dimensions[row_number].height = 32
 
     last_row = max(sheet.max_row, 1)
@@ -312,6 +334,7 @@ def _write_excel(rows: list[dict], path: Path, place_names: list[str] | None = N
         "Job type is Full-time, Part-time, Contract, Internship, or Temporary when the source says. Remote is Yes, No, or Unknown.",
         "Level is Entry, Senior, or Unknown. It uses the source's level when there is one, otherwise words in the title.",
         "Languages lists languages the description appears to require. Visa is No sponsorship, Sponsorship offered, or Unknown. Both are guessed from the text, not confirmed by the employer.",
+        "Visa fit and Language fit use your answers. Sponsorship mentioned is shaded green. A job that says it will not sponsor, that needs a language you did not list, or whose posting is in another language, is shaded red and sorted last. Those rows are removed only when you choose to hide jobs that do not fit.",
         "Source type is company site, job board, remote board, or aggregator. Sort or filter that column to see the less crowded sources first. Company site means the company's own careers page. Job board means a country or startup board.",
         "Ready search links for sites this program does not read are written to output/links.md.",
         "The same title at the same company is kept once. The company site link is kept when a job board lists it too.",

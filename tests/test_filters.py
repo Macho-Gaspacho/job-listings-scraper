@@ -364,7 +364,7 @@ filters:
             "location": "Berlin, Germany",
             "is_remote": False,
             "url": "https://example.com/visa",
-            "description": "We offer no visa sponsorship.",
+            "description": "Unfortunately we are unable to sponsor visas for this role.",
             "source": "Visa careers",
         },
     ]

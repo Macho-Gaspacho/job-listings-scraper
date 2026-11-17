@@ -379,7 +379,9 @@ class _SilentIO:
         return None
 
 
-def _config_for(query: dict, spec: dict, folder: Path) -> tuple[dict | None, str | None]:
+def _config_for(
+    query: dict, spec: dict, folder: Path, candidate: bool = False
+) -> tuple[dict | None, str | None]:
     parsed, problem = _accept_place(str(query.get("place") or ""))
     if parsed is None:
         return None, problem or "unknown"
@@ -425,6 +427,12 @@ def _config_for(query: dict, spec: dict, folder: Path) -> tuple[dict | None, str
         "seen_file": "seen_jobs.json",
     }
     folder.mkdir(parents=True, exist_ok=True)
+    if candidate:
+        data["candidate"] = {
+            "needs_visa": True,
+            "languages": ["English"],
+            "strict": False,
+        }
     body = yaml.safe_dump(data, sort_keys=False, allow_unicode=True, default_flow_style=False)
     (folder / "config.yaml").write_text(body, encoding="utf-8")
     return parsed, None
@@ -559,6 +567,7 @@ def run(
     offline: str = "",
     results_root: Path | None = None,
     fetch=None,
+    candidate: bool = False,
 ) -> list[dict]:
     """Run the queries and write summary.md and summary.json. Returns the rows."""
     spec = load_spec()
@@ -574,7 +583,7 @@ def run(
         started = time.perf_counter()
         query_id = str(query["id"])
         folder = label_dir / "raw" / query_id
-        parsed, problem = _config_for(query, spec, folder)
+        parsed, problem = _config_for(query, spec, folder, candidate=candidate)
         if parsed is None:
             summaries.append(_empty_row(query_id, f"place_rejected:{problem}", time.perf_counter() - started))
             print(f"{query_id}: place_rejected:{problem}", flush=True)
@@ -639,8 +648,20 @@ def main(argv: list[str] | None = None, results_root: Path | None = None, fetch=
         parser.add_argument("--label", required=True)
         parser.add_argument("--only", default="")
         parser.add_argument("--offline", default="")
+        parser.add_argument(
+            "--candidate",
+            action="store_true",
+            help="Treat the search as needing visa sponsorship and speaking English.",
+        )
         args = parser.parse_args(argv)
-        run(args.label, only=args.only, offline=args.offline, results_root=results_root, fetch=fetch)
+        run(
+            args.label,
+            only=args.only,
+            offline=args.offline,
+            results_root=results_root,
+            fetch=fetch,
+            candidate=args.candidate,
+        )
         return 0
     except Exception:
         traceback.print_exc()

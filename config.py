@@ -7,7 +7,7 @@ of the program can use.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
@@ -95,6 +95,15 @@ class Filters:
     only_visa_sponsorship: bool = False
 
 
+@dataclass(frozen=True)
+class Candidate:
+    """Visa and language answers. None means the question was skipped."""
+
+    needs_visa: bool | None = None
+    languages: tuple[str, ...] | None = None
+    strict: bool = False
+
+
 @dataclass
 class Settings:
     """Everything scrape.py needs, already checked."""
@@ -124,6 +133,7 @@ class Settings:
     filters: Filters | None = None
     job_boards: list[str] | None = None
     link_outs: tuple[str, ...] = ()
+    candidate: Candidate = field(default_factory=Candidate)
 
 
 def _text_list(values: object) -> list[str]:
@@ -370,6 +380,33 @@ def _load_filters(raw: dict) -> Filters:
     )
 
 
+def _load_candidate(raw: dict) -> Candidate:
+    """Optional answers. A config without candidate: behaves as before."""
+    if "candidate" not in raw or raw.get("candidate") is None:
+        return Candidate()
+    block = raw.get("candidate")
+    if not isinstance(block, dict):
+        raise ValueError("candidate in config.yaml should be a group of settings.")
+    if "needs_visa" in block and block.get("needs_visa") is not None:
+        if not isinstance(block.get("needs_visa"), bool):
+            raise ValueError("needs_visa must be true or false.")
+        needs_visa = block.get("needs_visa")
+    else:
+        needs_visa = None
+    if "languages" in block and block.get("languages") is not None:
+        if not isinstance(block.get("languages"), list):
+            raise ValueError("languages in candidate should be a list.")
+        languages = tuple(_text_list(block.get("languages")))
+    else:
+        languages = None
+    strict = False
+    if "strict" in block and block.get("strict") is not None:
+        if not isinstance(block.get("strict"), bool):
+            raise ValueError("strict must be true or false.")
+        strict = bool(block.get("strict"))
+    return Candidate(needs_visa=needs_visa, languages=languages, strict=strict)
+
+
 def _wwr_categories(raw: dict) -> tuple[str, ...] | None:
     """Category names from the we_work_remotely source, or None to use the default feed."""
     sources = raw.get("sources")
@@ -484,4 +521,5 @@ def load_config(path: str | Path) -> Settings:
         filters=_load_filters(raw),
         job_boards=job_boards,
         link_outs=link_outs,
+        candidate=_load_candidate(raw),
     )

@@ -1,0 +1,98 @@
+# Canonical English name, then names a person might type.
+# Matching uses the same norm as place names: case, accents, and hyphens ignored.
+# Two-letter codes are the ISO 639-1 codes for these languages.
+English:
+  - english
+  - английский
+  - inglese
+  - englisch
+  - anglais
+  - inglés
+  - ingles
+  - en
+German:
+  - german
+  - deutsch
+  - немецкий
+  - tedesco
+  - allemand
+  - alemán
+  - aleman
+  - de
+French:
+  - french
+  - français
+  - francais
+  - французский
+  - francese
+  - französisch
+  - franzosisch
+  - francés
+  - frances
+  - fr
+Spanish:
+  - spanish
+  - español
+  - espanol
+  - испанский
+  - spagnolo
+  - spanisch
+  - espagnol
+  - es
+Italian:
+  - italian
+  - italiano
+  - итальянский
+  - italienisch
+  - italien
+  - it
+Dutch:
+  - dutch
+  - nederlands
+  - нидерландский
+  - голландский
+  - olandese
+  - niederländisch
+  - niederlandisch
+  - néerlandais
+  - neerlandais
+  - neerlandés
+  - neerlandes
+  - nl
+Polish:
+  - polish
+  - polski
+  - польский
+  - polacco
+  - polnisch
+  - polonais
+  - polaco
+  - pl
+Portuguese:
+  - portuguese
+  - português
+  - portugues
+  - португальский
+  - portoghese
+  - portugiesisch
+  - portugais
+  - portugués
+  - pt
+Russian:
+  - russian
+  - русский
+  - russo
+  - russisch
+  - russe
+  - ruso
+  - ru
+Ukrainian:
+  - ukrainian
+  - українська
+  - український
+  - украинский
+  - ucraino
+  - ukrainisch
+  - ukrainien
+  - ucraniano
+  - uk

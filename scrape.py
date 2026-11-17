@@ -43,10 +43,11 @@ try:
     from boards import collect_board_listings
     from config import Settings, load_config
     from environment import python_version_problem, report_skip
-    from enrichment import filters_active, passes_filters
+    from enrichment import bind_candidate, filters_active, passes_filters
     from listings import (
         apply_new_flags,
         dedupe,
+        fit_group,
         identity_keys,
         sort_rows,
         title_is_excluded,
@@ -209,6 +210,19 @@ def collect_listings(settings: Settings, fetch, pause=time.sleep) -> tuple[list[
     return dedupe(rows), failures
 
 
+def hide_poor_fits(rows: list[dict], candidate) -> list[dict]:
+    """Drop known blockers when the user asked to hide jobs that do not fit."""
+    if candidate is None or not getattr(candidate, "strict", False):
+        return rows
+    kept = [row for row in rows if fit_group(row) < 2]
+    hidden = len(rows) - len(kept)
+    print(
+        f"Hid {hidden} jobs that do not fit your visa or language answers.",
+        flush=True,
+    )
+    return kept
+
+
 def _run_search(config_path: Path, fetch=None, getter=None, verbose: bool = False) -> int:
     """Load a saved config, search, and write the spreadsheet.
 
@@ -227,29 +241,31 @@ def _run_search(config_path: Path, fetch=None, getter=None, verbose: bool = Fals
     def _no_pause(_seconds: float) -> None:
         return None
 
-    if getter is None:
-        board_rows, board_failures = collect_board_listings(settings)
-    else:
-        board_rows, board_failures = collect_board_listings(
-            settings, pause=_no_pause, getter=getter
-        )
-    aggregator_rows: list[dict] = []
-    aggregator_failures = 0
-    if settings.sites:
+    with bind_candidate(settings.candidate):
+        if getter is None:
+            board_rows, board_failures = collect_board_listings(settings)
+        else:
+            board_rows, board_failures = collect_board_listings(
+                settings, pause=_no_pause, getter=getter
+            )
+        aggregator_rows: list[dict] = []
+        aggregator_failures = 0
+        if settings.sites:
 
-        def run_fetch(role, place, site):
-            if fetch is not None:
-                return fetch(role, place, site)
-            return fetch_listings(settings, role, place, site, verbose=verbose)
+            def run_fetch(role, place, site):
+                if fetch is not None:
+                    return fetch(role, place, site)
+                return fetch_listings(settings, role, place, site, verbose=verbose)
 
-        aggregator_rows, aggregator_failures = collect_listings(
-            settings,
-            run_fetch,
-            pause=time.sleep if getter is None else _no_pause,
-        )
+            aggregator_rows, aggregator_failures = collect_listings(
+                settings,
+                run_fetch,
+                pause=time.sleep if getter is None else _no_pause,
+            )
     # Dedupe again across company pages, remote boards, and Indeed/LinkedIn.
     rows = dedupe(board_rows + aggregator_rows)
     rows = sort_rows(apply_new_flags(rows, seen))
+    rows = hide_poor_fits(rows, settings.candidate)
     failures = board_failures + aggregator_failures
     searches = len(_search_pairs(settings))
     company_count = sum(1 for company in settings.companies or [] if company.enabled)

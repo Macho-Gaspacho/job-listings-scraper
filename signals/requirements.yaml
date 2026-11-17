@@ -1,5 +1,6 @@
 # Words used to guess level, language, and visa from a posting.
-# Matching is whole words, in any order, and ignores capitals and accents.
+# Level words match in any order. Language and visa phrases match only when
+# the words sit together in the same order. Capitals and accents are ignored.
 # These lists are a starter set for en, de, fr, es, it, nl, pl, and pt.
 # They are not a complete dictionary. Language and visa are guesses.
 
@@ -52,6 +53,9 @@ languages:
     - native english
     - english native
     - english fluency
+    - english required
+    - excellent english
+    - business english
   German:
     - fluent german
     - native german
@@ -63,6 +67,11 @@ languages:
     - deutsch verhandlungssicher
     - deutschkenntnisse
     - muttersprachlich deutsch
+    - sehr gute deutschkenntnisse
+    - gute deutschkenntnisse
+    - deutsch c1
+    - german c1
+    - deutsch auf muttersprachniveau
   French:
     - fluent french
     - native french
@@ -70,6 +79,9 @@ languages:
     - francais courant
     - français langue maternelle
     - maitrise du francais
+    - français c1
+    - french c1
+    - maîtrise du français
   Spanish:
     - fluent spanish
     - native spanish
@@ -77,24 +89,34 @@ languages:
     - espanol nativo
     - dominio del espanol
     - español fluido
+    - spanish c1
+    - español c1
   Italian:
     - fluent italian
     - native italian
     - italiano madrelingua
     - madrelingua italiana
     - italiano fluente
+    - ottima conoscenza della lingua italiana
+    - italian c1
+    - italiano c1
   Dutch:
     - fluent dutch
     - native dutch
     - vloeiend nederlands
     - nederlands vloeiend
     - nederlandse moedertaal
+    - nederlands c1
+    - dutch c1
+    - goede beheersing van de nederlandse taal
   Polish:
     - fluent polish
     - native polish
     - biegły język polski
     - plynie po polsku
     - jezyk polski wymagany
+    - polish c1
+    - polski c1
   Portuguese:
     - fluent portuguese
     - native portuguese
@@ -127,6 +149,21 @@ visa_no:
   - bez sponsorowania wizy
   - sem patrocinio de visto
   - autorizacao de trabalho obrigatoria
+  - unable to sponsor
+  - cannot sponsor
+  - can not sponsor
+  - not able to sponsor
+  - will not sponsor
+  - do not sponsor
+  - does not sponsor
+  - not provide visa sponsorship
+  - without sponsorship
+  - eu work permit required
+  - right to work in the uk
+  - valid work permit
+  - arbeitserlaubnis erforderlich
+  - geen sponsoring
+  - werkvergunning vereist
 
 # "Sponsorship offered" means the posting says a visa can be sponsored,
 # or that relocation support is part of the offer.
@@ -152,3 +189,101 @@ visa_yes:
   - wsparcie relokacji
   - patrocinio de visto disponivel
   - apoio a realocacao
+  - visa sponsorship
+  - sponsor your visa
+  - we can sponsor
+  - we will sponsor
+  - visa support
+  - relocation package
+  - blue card
+  - blaue karte
+  - kennismigrant
+  - highly skilled migrant
+  - skilled worker visa
+
+# Whole words that show which language a posting is written in.
+# The language with the most of these words wins when it has at least 6
+# and leads the next language by 2. A description under 30 words stays blank.
+posting_words:
+  German:
+    - und
+    - der
+    - die
+    - das
+    - mit
+    - für
+    - wir
+    - sie
+    - bei
+    - auf
+    - ist
+    - eine
+    - unser
+    - deine
+    - ihre
+    - erfahrung
+    - kenntnisse
+  Dutch:
+    - en
+    - het
+    - een
+    - van
+    - voor
+    - met
+    - wij
+    - jij
+    - bij
+    - ervaring
+    - kennis
+    - onze
+    - werken
+  French:
+    - et
+    - les
+    - des
+    - pour
+    - avec
+    - nous
+    - vous
+    - une
+    - dans
+    - expérience
+    - connaissances
+    - notre
+  Italian:
+    - e
+    - il
+    - della
+    - per
+    - con
+    - noi
+    - una
+    - nel
+    - esperienza
+    - conoscenza
+    - nostro
+    - lavoro
+  Spanish:
+    - y
+    - los
+    - las
+    - para
+    - con
+    - nosotros
+    - una
+    - en
+    - experiencia
+    - conocimientos
+    - nuestro
+    - trabajo
+  Polish:
+    - i
+    - oraz
+    - dla
+    - z
+    - w
+    - jest
+    - doświadczenie
+    - znajomość
+    - nasz
+    - praca

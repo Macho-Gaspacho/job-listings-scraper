@@ -60,6 +60,7 @@ def test_wizard_writes_a_config_from_answers(tmp_path):
             "",
             "",
             "",
+            "",
             "4,5",
             "",
             "",
@@ -185,6 +186,7 @@ def test_wizard_names_the_launcher_for_this_operating_system(
             "",
             "",
             "",
+            "",
             "n",
         ],
         run_search=fail_if_search_starts,
@@ -211,6 +213,7 @@ def test_wizard_country_wide_search_keeps_local_nurse_titles(
             "Nurse",
             country_name,
             "n",
+            "",
             "",
             "",
             "",
@@ -265,6 +268,7 @@ def test_wizard_leaves_indeed_off_for_a_country_it_does_not_cover(tmp_path):
             "",
             "",
             "",
+            "",
             "n",
         ],
     )
@@ -287,6 +291,7 @@ def test_wizard_remote_in_another_country_can_stay_on_linkedin_only(tmp_path):
             "y",
             "France",
             "1",
+            "",
             "",
             "",
             "",
@@ -334,6 +339,7 @@ def test_wizard_treats_europe_as_a_linkedin_only_remote_area(tmp_path):
             "",
             "",
             "",
+            "",
             "n",
         ],
     )
@@ -358,6 +364,7 @@ def test_wizard_can_skip_remote_and_save_a_company(tmp_path):
             "Milan, Italy",
             "n",
             "y",
+            "",
             "",
             "",
             "",
@@ -402,6 +409,7 @@ def test_wizard_defaults_and_offers_to_search(tmp_path):
         [
             "C++ Developer",
             "Austin, United States",
+            "",
             "",
             "",
             "",
@@ -464,6 +472,7 @@ def test_wizard_backs_up_an_existing_config_only_after_confirmation(tmp_path):
         "",
         "",
         "",
+        "",
         "5",
         "",
         "",
@@ -472,6 +481,7 @@ def test_wizard_backs_up_an_existing_config_only_after_confirmation(tmp_path):
         "Paris, France",
         "n",
         "n",
+        "",
         "",
         "",
         "",
@@ -512,6 +522,8 @@ def test_wizard_can_limit_job_types_senior_roles_and_visa(tmp_path):
             "Full-time, Internship",
             "y",
             "y",
+            "",
+            "n",
             "4,5",
             "",
             "",
@@ -522,11 +534,16 @@ def test_wizard_can_limit_job_types_senior_roles_and_visa(tmp_path):
     settings = load_config(config)
     assert settings.filters.job_types == ("Full-time", "Internship")
     assert settings.filters.levels == ("Entry", "Unknown")
-    assert settings.filters.only_visa_sponsorship is True
+    assert settings.filters.only_visa_sponsorship is False
+    assert settings.candidate.needs_visa is True
+    assert settings.candidate.languages is None
+    assert settings.candidate.strict is False
     assert "Only certain job types?" in script.text
     assert "Hide senior roles?" in script.text
-    assert "Do you need visa sponsorship?" in script.text
-    assert "guessed from the text" in script.text
+    assert "Need sponsorship? (y/N)" in script.text
+    assert "Do you need visa sponsorship?" not in script.text
+    assert "Visa: you need sponsorship (jobs that mention it first)" in script.text
+    assert "Hide jobs that do not fit: no" in script.text
     assert "Job types: Full-time, Internship" in script.text
     assert "Senior roles: hidden" in script.text
 

@@ -343,7 +343,12 @@ def filter_board_jobs(
             "role_searched": "; ".join(roles),
             "place_searched": place,
         }
-        row.update(describe_posting({**job, "title": row["title"], "description": description}))
+        row.update(
+            describe_posting(
+                {**job, "title": row["title"], "description": description},
+                getattr(settings, "candidate", None),
+            )
+        )
         if not passes_filters(row, getattr(settings, "filters", None)):
             continue
         if place == "Remote" and not row["location"] and is_remote:

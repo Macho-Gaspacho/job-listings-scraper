@@ -52,6 +52,8 @@ OUTPUT_FIELDS = [
     ("level", "Level"),
     ("languages", "Languages"),
     ("visa", "Visa"),
+    ("visa_fit", "Visa fit"),
+    ("language_fit", "Language fit"),
 ]
 
 
@@ -271,6 +273,8 @@ def row_from_hit(hit: dict, role: str, place: str, snippet_characters: int) -> d
         "level": described["level"],
         "languages": described["languages"],
         "visa": described["visa"],
+        "visa_fit": described["visa_fit"],
+        "language_fit": described["language_fit"],
     }
 
 
@@ -398,8 +402,31 @@ def _source_tier(source_type: object) -> int:
     return min(_SOURCE_TIER.get(part, 5) for part in parts)
 
 
+def _language_blocks(language_fit: str) -> bool:
+    return language_fit.startswith("Needs ") or language_fit.startswith("Posting in ")
+
+
+def fit_group(row: dict) -> int:
+    """0 sponsorship and no language blocker, 1 no blocker, 2 a known blocker.
+
+    Blank fit columns, which is what a skipped question writes, are group 1.
+    """
+    visa = str(row.get("visa_fit") or "")
+    language = str(row.get("language_fit") or "")
+    if visa == "Says no sponsorship" or _language_blocks(language):
+        return 2
+    if visa == "Sponsorship mentioned":
+        return 0
+    return 1
+
+
 def sort_rows(rows: list[dict]) -> list[dict]:
-    """New listings first, then the less crowded source, then the newest date."""
+    """Good fits first, then the previous order, with known blockers last.
+
+    The previous order is new listings, then the less crowded source, then
+    the newest date. Skipped visa and language questions leave every row in
+    the middle group, so that order does not change.
+    """
 
     def sort_key(row: dict) -> tuple:
         new_first = 0 if row.get("is_new") == "yes" else 1
@@ -411,6 +438,6 @@ def sort_rows(rows: list[dict]) -> list[dict]:
             date_key = tuple(-int(part) for part in parts)
         else:
             date_key = (0, 0, 0)
-        return (new_first, tier, date_key)
+        return (fit_group(row), new_first, tier, date_key)
 
     return sorted(rows, key=sort_key)

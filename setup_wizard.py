@@ -7,6 +7,7 @@ No Python knowledge is required.
 from __future__ import annotations
 
 import argparse
+import functools
 import shutil
 import sys
 from pathlib import Path
@@ -15,7 +16,7 @@ import yaml
 
 from urllib.parse import urlparse
 
-from config import KNOWN_SYSTEMS
+from config import KNOWN_SYSTEMS, Candidate
 from enrichment import canonical_job_type
 from places import norm, resolve_place
 from regions import INDEED_COUNTRIES, canonical_country, english_name, fold_text
@@ -117,6 +118,9 @@ def split_csv(raw: str) -> list[str]:
 
 _YES = {"", "y", "yes", "да", "si", "sì", "ja", "oui"}
 _NO = {"n", "no", "нет"}
+# Visa and language questions treat Enter as skip or "no", so empty is not a yes.
+_ANSWER_YES = {"y", "yes", "да", "si", "sì", "ja", "oui", "sí"}
+_ANSWER_NO = {"n", "no", "нет", "nein", "non"}
 
 
 def parse_place_full(raw: str):
@@ -350,6 +354,7 @@ def build_config(
     visa_sponsorship: bool = False,
     source_choice: str | None = None,
     link_outs: list[str] | None = None,
+    candidate: Candidate | None = None,
 ) -> dict:
     from source_map import curated_employers
 
@@ -415,6 +420,14 @@ def build_config(
         data["source_choice"] = source_choice
     if link_outs:
         data["link_outs"] = list(link_outs)
+    if candidate is not None and (
+        candidate.needs_visa is not None or candidate.languages is not None
+    ):
+        data["candidate"] = {
+            "needs_visa": candidate.needs_visa,
+            "languages": None if candidate.languages is None else list(candidate.languages),
+            "strict": bool(candidate.strict),
+        }
     return data
 
 
@@ -466,16 +479,112 @@ def summary_text(data: dict) -> str:
     if filters.get("only_visa_sponsorship"):
         filter_bits.append("Visa: keep jobs that offer sponsorship or do not say")
     extra_line = "".join(f"\n  {bit}" for bit in filter_bits)
+    candidate_line = _candidate_summary(data.get("candidate"))
     return (
         "Here is the search that will be saved:\n"
         f"  Job titles: {roles}\n"
         f"  Places: {'; '.join(places)}\n"
-        f"{filter_line}{exclude_line}{extra_line}\n"
+        f"{filter_line}{exclude_line}{extra_line}{candidate_line}\n"
         f"  Results per search: {data['results_per_search']}\n"
         f"  Posted within days: {data['posted_within_days']}\n"
         f"  Websites: {', '.join(enabled) or 'none'}\n"
         f"  Companies: {company_line}"
     )
+
+
+def _candidate_summary(candidate: object) -> str:
+    """Lines for the summary. Skipped questions add nothing."""
+    if not isinstance(candidate, dict):
+        return ""
+    lines = []
+    needs = candidate.get("needs_visa")
+    if needs is True:
+        lines.append("Visa: you need sponsorship (jobs that mention it first)")
+    elif needs is False:
+        lines.append("Visa: you do not need sponsorship")
+    languages = candidate.get("languages") or []
+    if languages:
+        lines.append("Languages you work in: " + ", ".join(str(name) for name in languages))
+    if needs is True or languages:
+        answer = "yes" if candidate.get("strict") else "no"
+        lines.append(f"Hide jobs that do not fit: {answer}")
+    return "".join(f"\n  {line}" for line in lines)
+
+
+def _has_cyrillic(text: str) -> bool:
+    return any("\u0400" <= char <= "\u04FF" for char in text)
+
+
+@functools.lru_cache(maxsize=1)
+def _ru_titles() -> dict[str, str]:
+    path = Path(__file__).resolve().parent / "synonyms" / "ru_titles.yaml"
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    found = {}
+    for key, value in raw.items():
+        found[norm(key)] = " ".join(str(value).split())
+    return found
+
+
+@functools.lru_cache(maxsize=1)
+def _language_aliases() -> dict[str, str]:
+    path = Path(__file__).resolve().parent / "signals" / "language_names.yaml"
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    aliases = {}
+    for canonical, names in raw.items():
+        for name in names or []:
+            aliases.setdefault(norm(name), str(canonical))
+    return aliases
+
+
+def parse_spoken_languages(raw: str) -> tuple[list[str], list[str]]:
+    """Canonical language names, and the words that were not recognised."""
+    found: list[str] = []
+    unknown: list[str] = []
+    aliases = _language_aliases()
+    for part in raw.split(","):
+        word = " ".join(part.split())
+        if not word:
+            continue
+        canonical = aliases.get(norm(word))
+        if canonical is None:
+            unknown.append(word)
+            continue
+        if canonical not in found:
+            found.append(canonical)
+    return found, unknown
+
+
+def _folded_answer(raw: str) -> str:
+    return raw.strip().casefold()
+
+
+def _english_role(io: IO, role: str) -> str:
+    """Offer the English title for a Russian one. Other titles stay as typed."""
+    if not _has_cyrillic(role):
+        return role
+    english = _ru_titles().get(norm(role))
+    if english:
+        io.say(
+            f'In job ads this is usually "{english}". '
+            f'Search for "{english}" instead? (Y/n)'
+        )
+        for _attempt in range(3):
+            raw = _folded_answer(io.ask("> "))
+            if raw == "" or raw in _ANSWER_YES:
+                return english
+            if raw in _ANSWER_NO:
+                return role
+            io.say("Please type y or n.")
+        return role
+    io.say(
+        f'"{role}" is not in English. Most job ads in the country you choose '
+        "use English titles, so this may find few jobs. Type the English title, "
+        "or press Enter to keep it."
+    )
+    typed = io.ask("> ")
+    if not typed.strip():
+        return role
+    return " ".join(typed.split())
 
 
 def ask_roles(io: IO) -> list[str]:
@@ -484,9 +593,10 @@ def ask_roles(io: IO) -> list[str]:
         io.say("Which job titles are you looking for?")
         io.say("Separate them with commas. Example: Project Manager, Product Manager")
         roles = split_csv(io.ask("> "))
-        if roles:
-            return roles
-        io.say("Please type at least one job title. Example: Project Manager, Product Manager")
+        if not roles:
+            io.say("Please type at least one job title. Example: Project Manager, Product Manager")
+            continue
+        return [_english_role(io, role) for role in roles]
 
 
 def _confirm_place(io: IO, label: str) -> bool:
@@ -720,12 +830,64 @@ def ask_hide_senior(io: IO) -> bool:
     return io.yes_no("Hide senior roles?", default=False)
 
 
-def ask_visa(io: IO) -> bool:
+def ask_visa(io: IO, country_label: str, remote_only: bool = False) -> bool | None:
+    """True, False, or None when the question is skipped."""
+    where = "the countries you chose" if remote_only else country_label
     io.say("")
-    io.say("Do you need visa sponsorship?")
-    io.say("Yes keeps jobs that offer sponsorship and jobs that do not say. It drops jobs that say they will not sponsor a visa.")
-    io.say("This is guessed from the text, so it can be wrong.")
-    return io.yes_no("Do you need visa sponsorship?", default=False)
+    io.say(f"Do you need a visa or work permit to work in {where}?")
+    io.say(
+        "If yes, jobs that mention sponsorship come first, and jobs that say "
+        "they do not sponsor are marked and put at the bottom."
+    )
+    io.say("Press Enter to skip.")
+    for _attempt in range(3):
+        raw = _folded_answer(io.ask("Need sponsorship? (y/N) "))
+        if raw == "":
+            return None
+        if raw in _ANSWER_YES:
+            return True
+        if raw in _ANSWER_NO:
+            return False
+        io.say("Please type y or n, or press Enter to skip.")
+    return None
+
+
+def ask_languages(io: IO) -> tuple[str, ...] | None:
+    """Languages the person can work in, or None when the question is skipped."""
+    io.say("")
+    io.say("Which languages can you work in? Separate them with commas, in any language.")
+    io.say("Example: English, Russian, Italian. Press Enter to skip.")
+    for attempt in range(2):
+        raw = io.ask("> ")
+        if not raw.strip():
+            return None
+        found, unknown = parse_spoken_languages(raw)
+        for word in unknown:
+            io.say(f'I don\'t know "{word}", so it was left out.')
+        if found:
+            return tuple(found)
+        if attempt == 0:
+            continue
+        return None
+    return None
+
+
+def ask_strict_fit(io: IO) -> bool:
+    """True hides jobs that clearly do not fit. Enter keeps them, marked."""
+    io.say("")
+    io.say(
+        "Hide jobs that clearly do not fit (they say no sponsorship, "
+        "or require a language you did not list)?"
+    )
+    io.say("Press Enter to keep them, marked at the bottom.")
+    for _attempt in range(3):
+        raw = _folded_answer(io.ask("Hide them? (y/N) "))
+        if raw == "" or raw in _ANSWER_NO:
+            return False
+        if raw in _ANSWER_YES:
+            return True
+        io.say("Please type y or n, or press Enter to keep them.")
+    return False
 
 
 def ask_exclude(io: IO) -> list[str]:
@@ -1023,7 +1185,14 @@ def _ask_and_save(path: Path, io: IO, run_search) -> int:
         exclude = ask_exclude(io)
         job_types = ask_job_types(io)
         hide_senior = ask_hide_senior(io)
-        visa_sponsorship = ask_visa(io)
+        needs_visa = ask_visa(io, _country_label, remote_only=place["kind"] == "remote")
+        spoken = ask_languages(io)
+        strict = False
+        if needs_visa is True or spoken is not None:
+            strict = ask_strict_fit(io)
+        candidate = None
+        if needs_visa is not None or spoken is not None:
+            candidate = Candidate(needs_visa=needs_visa, languages=spoken, strict=strict)
         places = places_from(place, remote)
         choice = ask_sources(io, indeed_ok, country, places, roles)
         want_companies = choice == "auto" or (isinstance(choice, set) and "company" in choice)
@@ -1048,7 +1217,7 @@ def _ask_and_save(path: Path, io: IO, run_search) -> int:
             posted_within_days=posted_within_days,
             job_types=job_types,
             hide_senior=hide_senior,
-            visa_sponsorship=visa_sponsorship,
+            candidate=candidate,
             source_choice="auto" if choice == "auto" else None,
             link_outs=link_ids if choice == "auto" else None,
         )

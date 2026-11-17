@@ -1,0 +1,45 @@
+# Russian job title to the English title used in ads.
+# Matching ignores case, accents, and hyphens. Extra keys are obvious inflections.
+менеджер проектов: project manager
+менеджера проектов: project manager
+менеджер проекта: project manager
+руководитель проектов: project manager
+руководителя проектов: project manager
+руководитель проекта: project manager
+проджект менеджер: project manager
+менеджер программ: program manager
+продакт менеджер: product manager
+менеджер продукта: product manager
+менеджера продукта: product manager
+владелец продукта: product owner
+владельца продукта: product owner
+аналитик данных: data analyst
+аналитика данных: data analyst
+дата аналитик: data analyst
+бизнес аналитик: business analyst
+системный аналитик: business analyst
+системного аналитика: business analyst
+дата сайентист: data scientist
+дата сайентиста: data scientist
+специалист по данным: data scientist
+специалиста по данным: data scientist
+инженер данных: data engineer
+инженера данных: data engineer
+разработчик: software engineer
+разработчика: software engineer
+программист: software engineer
+программиста: software engineer
+инженер программист: software engineer
+инженера программиста: software engineer
+риск менеджер: risk manager
+финансовый аналитик: financial analyst
+финансового аналитика: financial analyst
+аналитик инвестиционного банка: investment banking analyst
+консультант: consultant
+консультанта: consultant
+стратегический консультант: strategy consultant
+маркетолог: marketing manager
+маркетолога: marketing manager
+менеджер по маркетингу: marketing manager
+врач: physician
+врача: physician

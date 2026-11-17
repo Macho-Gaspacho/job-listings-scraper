@@ -59,8 +59,10 @@ def test_write_outputs_creates_csv_and_excel_with_friendly_headers(tmp_path):
         "Level",
         "Languages",
         "Visa",
+        "Visa fit",
+        "Language fit",
     ]
-    assert sheet.auto_filter.ref == "A1:Q2"
+    assert sheet.auto_filter.ref == "A1:S2"
     assert sheet["A2"].value == "yes"
     assert sheet["G2"].value == "aggregator"
     assert sheet["H2"].value == "https://it.indeed.com/viewjob?jk=sample"
@@ -108,7 +110,7 @@ def test_new_columns_show_salary_and_pass_through_safe_cell(tmp_path):
     assert values["Languages"] == "'=German"
     assert values["Visa"] == "No sponsorship (guessed from the text)"
     assert sheet.freeze_panes == "A2"
-    assert sheet.auto_filter.ref == "A1:Q2"
+    assert sheet.auto_filter.ref == "A1:S2"
 
 
 def test_about_sheet_names_the_configured_places(tmp_path):
