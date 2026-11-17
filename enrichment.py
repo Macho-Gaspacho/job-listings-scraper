@@ -95,6 +95,39 @@ _VISA_NO = "No sponsorship"
 _VISA_YES = "Sponsorship offered"
 _VISA_UNKNOWN = "Unknown"
 _GUESSED = " (guessed from the text)"
+# After normalise. "do not" is covered by "not". An apostrophe already splits
+# "don't" into two words, so it is not the word "dont".
+_VISA_NEGATION = frozenset(
+    {
+        "no",
+        "not",
+        "cannot",
+        "cant",
+        "unable",
+        "never",
+        "without",
+        "dont",
+        "doesnt",
+        "wont",
+        "nor",
+        "non",
+        "sin",
+        "sans",
+        "pas",
+        "geen",
+        "niet",
+        "kein",
+        "keine",
+        "keinen",
+        "nicht",
+        "nie",
+        "bez",
+        "niente",
+        "senza",
+        "sem",
+        "nao",
+    }
+)
 
 
 def _missing(value: object) -> bool:
@@ -383,15 +416,68 @@ def detect_languages(text: object, signals: dict | None = None) -> list[str]:
     return found
 
 
+def _sentences(text: object) -> list[str]:
+    """Split on . ! ? ; and line breaks. Blank pieces are left out."""
+    raw = "" if text is None else str(text)
+    pieces: list[str] = []
+    current: list[str] = []
+    for char in raw:
+        if char in ".!?;\r\n":
+            sentence = "".join(current).strip()
+            if sentence:
+                pieces.append(sentence)
+            current = []
+        else:
+            current.append(char)
+    sentence = "".join(current).strip()
+    if sentence:
+        pieces.append(sentence)
+    return pieces
+
+
+def _yes_hits(words: list[str], phrase: str) -> tuple[bool, bool]:
+    """Whether one yes-phrase is cancelled here, and whether it stands.
+
+    A negation word in the six words before the phrase cancels that hit.
+    words are already normalised.
+    """
+    needles = normalise(phrase)
+    width = len(needles)
+    if not needles or width > len(words):
+        return False, False
+    negated = False
+    clear = False
+    for start in range(len(words) - width + 1):
+        window = " ".join(words[start : start + width])
+        if not sequence_matches(window, phrase):
+            continue
+        earlier = words[max(0, start - 6) : start]
+        if any(token in _VISA_NEGATION for token in earlier):
+            negated = True
+        else:
+            clear = True
+    return negated, clear
+
+
 def detect_visa(text: object, signals: dict | None = None) -> str:
     """No sponsorship, Sponsorship offered, or Unknown.
 
     Both kinds of sentence in one posting stay Unknown.
+    A yes-phrase with a negation word in the six words before it counts
+    as no sponsorship. That word has to be in the same sentence.
     The words of a phrase have to appear together, in that order.
     """
     table = load_signals() if signals is None else signals
-    denied = any(sequence_matches(text, phrase) for phrase in table["visa_no"])
-    offered = any(sequence_matches(text, phrase) for phrase in table["visa_yes"])
+    denied = False
+    offered = False
+    for sentence in _sentences(text):
+        if any(sequence_matches(sentence, phrase) for phrase in table["visa_no"]):
+            denied = True
+        words = normalise(sentence)
+        for phrase in table["visa_yes"]:
+            negated, clear = _yes_hits(words, phrase)
+            denied = denied or negated
+            offered = offered or clear
     if denied and offered:
         return _VISA_UNKNOWN
     if denied:

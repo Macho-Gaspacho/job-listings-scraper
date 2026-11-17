@@ -135,6 +135,8 @@ visa_no:
   - must have the right to work
   - must be authorised to work
   - must be authorized to work
+  - must be eligible to work
+  - eligible to work in
   - geen visumsponsoring
   - geen visa sponsorship
   - keine visumsponsoring
@@ -165,10 +167,8 @@ visa_no:
   - geen sponsoring
   - werkvergunning vereist
 
-# "Sponsorship offered" means the posting says a visa can be sponsored,
-# or that relocation support is part of the offer.
-# A phrase must include a word that is not in "we offer no visa sponsorship",
-# because extra words such as "no" are ignored.
+# "Sponsorship offered" means the posting says a visa can be sponsored.
+# Relocation help on its own is not sponsorship.
 visa_yes:
   - visa sponsorship available
   - sponsorship is available
@@ -176,8 +176,6 @@ visa_yes:
   - visa sponsorship offered
   - sponsorship offered
   - we sponsor visas
-  - relocation support
-  - relocation assistance
   - visum sponsoring mogelijk
   - visa sponsoring möglich
   - sponsoring de visa possible
@@ -194,7 +192,6 @@ visa_yes:
   - we can sponsor
   - we will sponsor
   - visa support
-  - relocation package
   - blue card
   - blaue karte
   - kennismigrant
