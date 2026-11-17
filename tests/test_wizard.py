@@ -125,7 +125,8 @@ def test_parse_place_accepts_a_country_a_city_or_remote():
 
     missing, missing_error = parse_place("Berlin")
     assert missing is None
-    assert missing_error == "country"
+    # A bare city that resolves to one place asks for a yes, instead of rejecting it.
+    assert missing_error == "confirm"
 
 
 def test_resolve_remote_area_accepts_countries_and_linkedin_regions():

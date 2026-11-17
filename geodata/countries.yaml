@@ -1,0 +1,276 @@
+# Canonical country key → ISO alpha-2 and names a person might type.
+# names are matched with accents removed. iso2 is not itself a name,
+# except where a short form such as "uk" is a real way to write the country.
+argentina:
+  iso2: AR
+  names: [argentina, argentine, argentinien, argentina]
+australia:
+  iso2: AU
+  names: [australia, australie, australien, australia]
+austria:
+  iso2: AT
+  names: [austria, österreich, osterreich, autriche, австрия]
+bahrain:
+  iso2: BH
+  names: [bahrain, bahrein, bahrein]
+bangladesh:
+  iso2: BD
+  names: [bangladesh]
+belgium:
+  iso2: BE
+  names: [belgium, belgie, belgique, belgien, belgio, belgica, bélgica, бельгия]
+bosnia and herzegovina:
+  iso2: BA
+  names: [bosnia and herzegovina, bosna i hercegovina, bosnie, bosnien]
+brazil:
+  iso2: BR
+  names: [brazil, brasil, brésil, brasilien, brasile, бразилия]
+bulgaria:
+  iso2: BG
+  names: [bulgaria, bulgarie, bulgarien]
+canada:
+  iso2: CA
+  names: [canada, kanada]
+chile:
+  iso2: CL
+  names: [chile]
+china:
+  iso2: CN
+  names: [china, chine, cina, kitaj, китай]
+colombia:
+  iso2: CO
+  names: [colombia, colombie, kolumbien]
+costa rica:
+  iso2: CR
+  names: [costa rica]
+croatia:
+  iso2: HR
+  names: [croatia, hrvatska, croatie, kroatien, croazia]
+cyprus:
+  iso2: CY
+  names: [cyprus, kypros, chypre, zypern, cipro]
+czech republic:
+  iso2: CZ
+  names: [czech republic, czechia, cesko, česko, tchequie, tschechien]
+denmark:
+  iso2: DK
+  names: [denmark, danmark, danemark, dänemark, danimarca]
+ecuador:
+  iso2: EC
+  names: [ecuador, equateur]
+egypt:
+  iso2: EG
+  names: [egypt, egypte, ägypten, egitto]
+estonia:
+  iso2: EE
+  names: [estonia, eesti, estonie, estland]
+finland:
+  iso2: FI
+  names: [finland, suomi, finlande, finnland, finlandia]
+france:
+  iso2: FR
+  names: [france, frankreich, francia, франция]
+georgia:
+  iso2: GE
+  names: [georgia, georgie, georgien]
+germany:
+  iso2: DE
+  names: [germany, deutschland, allemagne, germania, alemania, германия]
+ghana:
+  iso2: GH
+  names: [ghana]
+greece:
+  iso2: GR
+  names: [greece, ellada, grèce, griechenland, grecia]
+hong kong:
+  iso2: HK
+  names: [hong kong, hongkong]
+hungary:
+  iso2: HU
+  names: [hungary, magyarorszag, magyarország, hongrie, ungarn, ungheria]
+iceland:
+  iso2: IS
+  names: [iceland, island, islande]
+india:
+  iso2: IN
+  names: [india, inde, indien]
+indonesia:
+  iso2: ID
+  names: [indonesia, indonesie, indonésie]
+ireland:
+  iso2: IE
+  names: [ireland, éire, eire, irland, irlande, irlanda, ирландия]
+israel:
+  iso2: IL
+  names: [israel, israël]
+italy:
+  iso2: IT
+  names: [italy, italia, italie, italien, италия]
+japan:
+  iso2: JP
+  names: [japan, japon, giappone, japón]
+jordan:
+  iso2: JO
+  names: [jordan, jordanie, jordanien, giordania]
+kazakhstan:
+  iso2: KZ
+  names: [kazakhstan, kazakstan]
+kenya:
+  iso2: KE
+  names: [kenya, kenia]
+kuwait:
+  iso2: KW
+  names: [kuwait, koweit, koweït]
+latvia:
+  iso2: LV
+  names: [latvia, latvija, lettonie, lettland, lettonia]
+lebanon:
+  iso2: LB
+  names: [lebanon, liban, libanon]
+lithuania:
+  iso2: LT
+  names: [lithuania, lietuva, lituanie, litauen, lituania]
+luxembourg:
+  iso2: LU
+  names: [luxembourg, luxemburg, lussemburgo]
+malaysia:
+  iso2: MY
+  names: [malaysia, malaisie]
+malta:
+  iso2: MT
+  names: [malta, malte]
+mexico:
+  iso2: MX
+  names: [mexico, méxico, mexique, mexiko, messico]
+moldova:
+  iso2: MD
+  names: [moldova, moldavie, moldawien, moldavia]
+montenegro:
+  iso2: ME
+  names: [montenegro, crna gora]
+morocco:
+  iso2: MA
+  names: [morocco, maroc, marokko, marruecos, marocco]
+nepal:
+  iso2: NP
+  names: [nepal, népal]
+netherlands:
+  iso2: NL
+  names: [netherlands, nederland, holland, pays bas, niederlande, paises bajos, países bajos, paesi bassi, olanda, holanda, нидерланды, голландия]
+new zealand:
+  iso2: NZ
+  names: [new zealand, nouvelle zelande, neuseeland]
+nigeria:
+  iso2: NG
+  names: [nigeria, nigéria]
+north macedonia:
+  iso2: MK
+  names: [north macedonia, macedonia]
+norway:
+  iso2: "NO"
+  names: [norway, norge, norvege, norvège, norwegen, norvegia]
+oman:
+  iso2: OM
+  names: [oman]
+pakistan:
+  iso2: PK
+  names: [pakistan]
+panama:
+  iso2: PA
+  names: [panama, panamá]
+peru:
+  iso2: PE
+  names: [peru, perú, pérou]
+philippines:
+  iso2: PH
+  names: [philippines, filipinas, philippinen]
+poland:
+  iso2: PL
+  names: [poland, polska, pologne, polen, polonia, польша]
+portugal:
+  iso2: PT
+  names: [portugal, portogallo, португалия]
+qatar:
+  iso2: QA
+  names: [qatar]
+romania:
+  iso2: RO
+  names: [romania, roumanie, rumänien, rumania]
+saudi arabia:
+  iso2: SA
+  names: [saudi arabia, arabie saoudite]
+serbia:
+  iso2: RS
+  names: [serbia, srbija, serbie, serbien]
+singapore:
+  iso2: SG
+  names: [singapore, singapour, singapur]
+slovakia:
+  iso2: SK
+  names: [slovakia, slovensko, slovaquie, slowakei]
+slovenia:
+  iso2: SI
+  names: [slovenia, slovenija, slovénie, slowenien]
+south africa:
+  iso2: ZA
+  names: [south africa, afrique du sud, südafrika]
+south korea:
+  iso2: KR
+  names: [south korea, korea, corée, corea]
+spain:
+  iso2: ES
+  names: [spain, españa, espana, espagne, spanien, spagna, испания]
+sri lanka:
+  iso2: LK
+  names: [sri lanka]
+sweden:
+  iso2: SE
+  names: [sweden, sverige, suede, suède, schweden, svezia]
+switzerland:
+  iso2: CH
+  names: [switzerland, schweiz, suisse, svizzera, suiza, швейцария]
+taiwan:
+  iso2: TW
+  names: [taiwan, taïwan]
+thailand:
+  iso2: TH
+  names: [thailand, thaïlande, tailandia]
+tunisia:
+  iso2: TN
+  names: [tunisia, tunisie, tunesien, tunez, túnez]
+"türkiye":
+  iso2: TR
+  names: [türkiye, turkiye, turkey, turquie, türkei, turchia]
+ukraine:
+  iso2: UA
+  names: [ukraine, ucrania, ucraina]
+united arab emirates:
+  iso2: AE
+  names: [united arab emirates, uae, emirats arabes unis, emirati arabi uniti]
+uk:
+  iso2: GB
+  names: [united kingdom, uk, great britain, england, regno unito, royaume uni, vereinigtes konigreich, vereinigtes königreich, reino unido, gran bretagna, великобритания, англия]
+usa:
+  iso2: US
+  names: [united states, usa, us, etats unis, états unis, vereinigte staaten, stati uniti, estados unidos, сша, соединенные штаты, соединённые штаты]
+uruguay:
+  iso2: UY
+  names: [uruguay]
+venezuela:
+  iso2: VE
+  names: [venezuela]
+vietnam:
+  iso2: VN
+  names: [vietnam, viet nam]
+armenia:
+  iso2: AM
+  names: [armenia, armenie, arménie, armenien]
+azerbaijan:
+  iso2: AZ
+  names: [azerbaijan, azerbaidjan, azerbaïdjan]
+belarus:
+  iso2: BY
+  names: [belarus, bielorussie, weißrussland]
+albania:
+  iso2: AL
+  names: [albania, albanie, albanien]

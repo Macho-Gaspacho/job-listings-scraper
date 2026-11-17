@@ -10,7 +10,10 @@ import unicodedata
 from dataclasses import dataclass
 from datetime import datetime
 from functools import lru_cache
+from pathlib import Path
 from zoneinfo import ZoneInfo
+
+import yaml
 
 from matching import normalise
 
@@ -285,12 +288,42 @@ def _canonical_index() -> dict[str, str]:
     return index
 
 
+def _without_yo(name: str) -> str:
+    """ё and е are the same letter for a country name someone typed."""
+    return fold_text(str(name).replace("ё", "е").replace("Ё", "Е"))
+
+
+@lru_cache(maxsize=1)
+def _yaml_countries() -> dict[str, str]:
+    """Extra country names from geodata/countries.yaml. Built-in names win."""
+    path = Path(__file__).resolve().parent / "geodata" / "countries.yaml"
+    if not path.is_file():
+        return {}
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(raw, dict):
+        return {}
+    known = _canonical_index()
+    index: dict[str, str] = {}
+    for key, entry in raw.items():
+        if not isinstance(entry, dict):
+            continue
+        for alias in entry.get("names") or []:
+            for folded in (fold_text(alias), _without_yo(alias)):
+                if folded and folded not in known and folded not in index:
+                    index[folded] = str(key)
+    return index
+
+
 def canonical_country(name: str) -> str | None:
     """An Indeed country code, or None when the name is not a country."""
     text = fold_text(name)
     if not text:
         return None
-    return _canonical_index().get(text)
+    found = _canonical_index().get(text)
+    if found:
+        return found
+    extra = _yaml_countries()
+    return extra.get(text) or extra.get(_without_yo(name))
 
 
 def english_name(country: str) -> str:

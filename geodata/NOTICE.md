@@ -1,0 +1,1 @@
+City names: GeoNames (https://www.geonames.org/), cities15000 export, licensed CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Filtered to population ≥ 50,000 and Latin/Cyrillic names by tools/build_places.py on 2026-11-17. Data is provided as is.

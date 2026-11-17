@@ -21,9 +21,11 @@ To answer questions and write a profile when you do not have a CV yet:
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 import time
 from datetime import date, datetime
+from functools import lru_cache
 from pathlib import Path
 
 if __name__ == "__main__" and sys.version_info < (3, 10):
@@ -50,6 +52,7 @@ try:
         title_is_excluded,
         title_is_relevant,
     )
+    from regions import _country_in_text
     from save_results import load_seen, save_seen, write_daily_files, write_outputs
     from sources import fetch_listings, quiet_library_logs
 except ModuleNotFoundError as exc:
@@ -92,6 +95,50 @@ def _search_pairs(settings: Settings) -> list[tuple]:
     return pairs
 
 
+_STATE_SUFFIX = re.compile(r",\s*([A-Za-z]{2})\s*$")
+
+
+@lru_cache(maxsize=1)
+def _us_state_codes() -> frozenset[str]:
+    path = Path(__file__).resolve().parent / "geodata" / "us_states.yaml"
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return frozenset(str(code).upper() for code in raw)
+
+
+@lru_cache(maxsize=1)
+def _country_iso() -> dict[str, str]:
+    path = Path(__file__).resolve().parent / "geodata" / "countries.yaml"
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    found = {}
+    for key, entry in raw.items():
+        if isinstance(entry, dict) and entry.get("iso2"):
+            found[str(key)] = str(entry["iso2"]).upper()
+    return found
+
+
+def _place_country(place) -> str:
+    for text in (place.name, place.indeed_location, place.linkedin_location):
+        found = _country_in_text(str(text or ""))
+        if found:
+            return found
+    return ""
+
+
+def _other_country(location: str, country: str) -> bool:
+    """True when an aggregator row names a different country than the place.
+
+    A trailing ", XX" is a US state code, except when XX is this country's
+    own ISO code. DE is Germany and also Delaware.
+    """
+    match = _STATE_SUFFIX.search(location.strip())
+    if match and country != "usa":
+        code = match.group(1).upper()
+        if code in _us_state_codes() and code != _country_iso().get(country, ""):
+            return True
+    found = _country_in_text(location)
+    return bool(found) and found != country
+
+
 def collect_listings(settings: Settings, fetch, pause=time.sleep) -> tuple[list[dict], int]:
     """Search every role, place, and site.
 
@@ -130,12 +177,28 @@ def collect_listings(settings: Settings, fetch, pause=time.sleep) -> tuple[list[
             if limited:
                 found = [row for row in found if passes_filters(row, settings.filters)]
                 filtered = True
-            if filtered:
-                reason = "after filters" if limited else "with a matching title"
-                print(
-                    f"  Found {before}, kept {len(found)} {reason}.",
-                    flush=True,
-                )
+            dropped_country = 0
+            # Indeed and LinkedIn are not checked by the company-page rules.
+            # A row that names another country, or ends in a US state code
+            # while this place is not in the US, does not belong in the file.
+            if not place.remote:
+                country = _place_country(place)
+                kept = []
+                for row in found:
+                    if _other_country(str(row.get("location") or ""), country):
+                        dropped_country += 1
+                    else:
+                        kept.append(row)
+                found = kept
+            if filtered or dropped_country:
+                if filtered:
+                    reason = "after filters" if limited else "with a matching title"
+                    message = f"  Found {before}, kept {len(found)} {reason}"
+                else:
+                    message = f"  Found {before}, kept {len(found)}"
+                if dropped_country:
+                    message += f", {dropped_country} dropped as another country"
+                print(message + ".", flush=True)
             else:
                 print(f"  Found {len(found)}.", flush=True)
         rows.extend(found)

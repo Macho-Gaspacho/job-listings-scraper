@@ -88,7 +88,7 @@ The first time, it creates a private folder named `.venv` and installs the tools
 It asks, one at a time:
 
 - which job titles you want (for example `Project Manager, Product Manager`)
-- which city and country (for example `Berlin, Germany`)
+- which city and country (for example `Berlin, Germany` or `Milano, Italia`; local names such as `Милано` are understood)
 - whether to include remote jobs, and in which country
 - extra words that must appear in the title (you can leave this blank)
 - which websites to use
@@ -468,6 +468,10 @@ sample/             Made-up spreadsheet, so you can see the columns before you s
 - A salary filter does not drop a job that leaves the pay blank. It also does not convert between currencies.
 - Dates are whatever the source sent. Company jobs older than 30 days are still listed while they are open.
 - Indeed and LinkedIn return a limited number of results per search (`results_per_search`), not every posting on the site.
+
+## Data credits
+
+City names: GeoNames (https://www.geonames.org/), cities15000 export, licensed CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Filtered to population ≥ 50,000 and Latin/Cyrillic names by tools/build_places.py on 2026-11-17. Data is provided as is. See [geodata/NOTICE.md](geodata/NOTICE.md).
 
 ## License
 

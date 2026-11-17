@@ -15,6 +15,7 @@ import yaml
 
 from config import KNOWN_SYSTEMS
 from enrichment import canonical_job_type
+from places import resolve_place
 from regions import INDEED_COUNTRIES, canonical_country, english_name, fold_text
 from synonyms import suggestions_for
 
@@ -109,44 +110,56 @@ def split_csv(raw: str) -> list[str]:
     return seen
 
 
+_YES = {"", "y", "yes", "да", "si", "sì", "ja", "oui"}
+_NO = {"n", "no", "нет"}
+
+
+def parse_place_full(raw: str):
+    """The full place resolution, including confirm and choose."""
+    return resolve_place(raw)
+
+
+def accepted_place(result) -> dict:
+    """The place dict saved after ok, an accepted confirm, or a country."""
+    if result.status == "remote":
+        return {"kind": "remote"}
+    if result.status == "country_only":
+        label = english_name(result.country)
+        return {
+            "kind": "country",
+            "name": label,
+            "country": result.country,
+            "label": label,
+            "indeed": result.country in INDEED_COUNTRIES,
+        }
+    label = english_name(result.country)
+    return {
+        "kind": "city",
+        "name": result.label,
+        "country": result.country,
+        "label": label,
+        "indeed": result.country in INDEED_COUNTRIES,
+    }
+
+
 def parse_place(raw: str) -> tuple[dict | None, str | None]:
     """A city and country, a country on its own, or Remote.
 
-    Returns (place, error kind). error kind is "comma" or "country".
+    Returns (place, error kind). confirm and choose need another question.
+    A city's name is the English label, such as "Milan, Italy".
     """
-    text = " ".join(raw.strip().split())
-    if not text:
+    result = parse_place_full(raw)
+    if result.status in {"ok", "country_only", "remote"}:
+        return accepted_place(result), None
+    if result.status == "confirm":
+        return None, "confirm"
+    if result.status == "choose":
+        return None, "choose"
+    if result.status == "unknown" and result.detail == "city":
+        return None, "city"
+    if result.status == "empty":
         return None, "empty"
-    if fold_text(text) == "remote":
-        return {"kind": "remote"}, None
-    if "," not in raw:
-        code = canonical_country(text)
-        if code:
-            label = english_name(code)
-            return {
-                "kind": "country",
-                "name": label,
-                "country": code,
-                "label": label,
-                "indeed": code in INDEED_COUNTRIES,
-            }, None
-        if len(text.split()) >= 2:
-            return None, "comma"
-        return None, "country"
-    parts = [part.strip() for part in raw.split(",") if part.strip()]
-    if len(parts) < 2:
-        return None, "comma"
-    code = canonical_country(parts[-1])
-    if code is None:
-        return None, "country"
-    label = english_name(code)
-    return {
-        "kind": "city",
-        "name": ", ".join(parts),
-        "country": code,
-        "label": label,
-        "indeed": code in INDEED_COUNTRIES,
-    }, None
+    return None, "country"
 
 
 def resolve_remote_area(raw: str) -> tuple[str, str | None, bool] | None:
@@ -232,11 +245,13 @@ def places_from(place: dict, remote: dict | None) -> list[dict]:
     """The location blocks for config.yaml."""
     places = []
     if place["kind"] == "city":
+        # name is the English label, such as "Milan, Italy", never the typed text.
+        english = place["name"]
         places.append(
             {
-                "name": place["name"],
-                "indeed_location": place["name"],
-                "linkedin_location": place["name"],
+                "name": english,
+                "indeed_location": english,
+                "linkedin_location": english,
                 "remote": False,
                 "distance_miles": 30,
                 "search_indeed": bool(place["indeed"]),
@@ -402,31 +417,80 @@ def ask_roles(io: IO) -> list[str]:
         io.say("Please type at least one job title. Example: Project Manager, Product Manager")
 
 
+def _confirm_place(io: IO, label: str) -> bool:
+    """Yes is the default. Enter, y, or the same word in a few languages accepts."""
+    while True:
+        raw = io.ask(f"I understood: {label}. Is that right? [Y/n] ").strip().casefold()
+        if raw in _YES:
+            return True
+        if raw in _NO:
+            return False
+        io.say("Please type y or n.")
+
+
+def _choose_place(io: IO, typed: str, choices: tuple) -> dict | None:
+    io.say(f"There is more than one {typed}. Which one?")
+    for index, choice in enumerate(choices, start=1):
+        io.say(f"{index}. {choice[2]}")
+    io.say("0. None of these, let me type it again")
+    shown = {str(index) for index in range(len(choices) + 1)}
+    for _attempt in range(3):
+        raw = io.ask("> ").strip()
+        if raw in shown:
+            if raw == "0":
+                return None
+            _city, country, label = choices[int(raw) - 1]
+            return {
+                "kind": "city",
+                "name": label,
+                "country": country,
+                "label": english_name(country),
+                "indeed": country in INDEED_COUNTRIES,
+            }
+        io.say("Please type one of the numbers shown.")
+    return None
+
+
 def ask_place(io: IO) -> dict:
     while True:
         io.say("")
         io.say("Which place should we search?")
         io.say("Type a city and a country, a country on its own, or Remote.")
-        io.say("Examples: Berlin, Germany    Italy    Remote")
+        io.say("Examples: Berlin, Germany    Milano, Italia    Italy    Remote")
         io.say("For the US state of Georgia, type the city and United States.")
-        parsed, problem = parse_place(io.ask("> "))
-        if parsed is not None:
-            if parsed["kind"] != "remote" and not parsed["indeed"]:
-                io.say(
-                    f"Indeed does not cover {parsed['label']}. "
-                    "LinkedIn will be used for this search. Indeed will be left off."
-                )
-            return parsed
-        if problem == "country":
+        result = parse_place_full(io.ask("> "))
+        parsed = None
+        if result.status in {"ok", "country_only", "remote"}:
+            parsed = accepted_place(result)
+        elif result.status == "confirm":
+            if _confirm_place(io, result.label):
+                parsed = accepted_place(result)
+        elif result.status == "choose":
+            parsed = _choose_place(io, result.typed, result.choices)
+        elif result.status == "unknown" and result.detail == "city":
+            io.say(
+                f'I could not find "{result.typed}". Please add the country after a comma, '
+                "for example: Bergamo, Italy"
+            )
+        elif result.status == "unknown":
             io.say(
                 "That country was not recognised. Use the English name, "
-                "such as Germany, Italy, Armenia, or United States."
+                "such as Germany, Italy, Armenia, or United States. "
+                "You can write the country in English, Italian, German, French, Spanish or Russian."
             )
         else:
             io.say(
                 "Type a city and a country separated by a comma, a country on its own, or Remote. "
-                "Examples: Berlin, Germany    Italy    Remote"
+                "Examples: Berlin, Germany    Milano, Italia    Italy    Remote"
             )
+        if parsed is None:
+            continue
+        if parsed["kind"] != "remote" and not parsed["indeed"]:
+            io.say(
+                f"Indeed does not cover {parsed['label']}. "
+                "LinkedIn will be used for this search. Indeed will be left off."
+            )
+        return parsed
 
 
 def ask_remote(io: IO, country_code: str | None, country_label: str, place_is_remote: bool) -> dict | None:
