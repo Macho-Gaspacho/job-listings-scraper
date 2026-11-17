@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import re
+import ssl
 import time
 import urllib.error
 import urllib.request
@@ -23,7 +24,16 @@ from html import unescape
 from config import Company, Settings
 from enrichment import describe_posting, job_type_text, passes_filters
 from environment import certificate_hint, network_problem, report_skip
-from regions import build_location_rules
+from matching import normalise
+from regions import (
+    COUNTRY_ALIASES,
+    NATIVE_NAMES,
+    build_location_rules,
+    canonical_country,
+    contains_phrase,
+    english_name,
+    looks_remote,
+)
 from listings import (
     classify_place,
     clean_text,
@@ -71,12 +81,26 @@ def http_get(url: str, sleep=time.sleep) -> bytes:
     raise RuntimeError("the site could not be reached") from last_error
 
 
+def _ssl_context():
+    """A context that trusts certifi's certificate list.
+
+    Python on a fresh Mac often has no system CA bundle, so HTTPS fails
+    until someone sets SSL_CERT_FILE. certifi ships the list. If it cannot
+    be imported, the default context is used and the download still runs.
+    """
+    try:
+        import certifi
+    except ImportError:
+        return ssl.create_default_context()
+    return ssl.create_default_context(cafile=certifi.where())
+
+
 def _read_url(url: str) -> bytes:
     request = urllib.request.Request(
         url,
         headers={"User-Agent": USER_AGENT, "Accept": "application/json, application/rss+xml, */*"},
     )
-    with urllib.request.urlopen(request, timeout=45) as response:
+    with urllib.request.urlopen(request, timeout=45, context=_ssl_context()) as response:
         return response.read(20_000_000)
 
 
@@ -169,6 +193,83 @@ def _wwr_category_url(category: str) -> str:
     return f"https://weworkremotely.com/categories/{slug}.rss"
 
 
+# These feeds return a whole board. They are not searched by keyword.
+# Indeed and LinkedIn are. Company pages the user added are not in this set.
+_WHOLE_BOARD_SOURCES = frozenset(
+    {
+        "arbeitnow",
+        "we_work_remotely",
+        "we work remotely",
+        "remote_ok",
+        "remote ok",
+        "remotive",
+        "working_nomads",
+        "working nomads",
+    }
+)
+
+
+def _source_name(job: dict) -> str:
+    return clean_text(job.get("source")).casefold()
+
+
+def _whole_board(job: dict) -> bool:
+    """True when this row came from a feed that has no keyword search."""
+    return _source_name(job) in _WHOLE_BOARD_SOURCES
+
+
+def _title_matches_role(title: str, role: str, phrases: list[str] | None) -> bool:
+    """True when the title contains the typed role, or an accepted local title.
+
+    Comparison uses the same normalisation as other title checks. Words of
+    two letters or fewer are ignored. The words may be in any order.
+    """
+    haystack = normalise(title)
+    seen: set[tuple[str, ...]] = set()
+    for phrase in (role, *(phrases or [])):
+        words = tuple(word for word in normalise(phrase) if len(word) > 2)
+        if not words or words in seen:
+            continue
+        seen.add(words)
+        if all(word in haystack for word in words):
+            return True
+    return False
+
+
+def _country_tokens(rules) -> set[str]:
+    """Words that name the user's country and nothing more specific."""
+    labels = [rules.country, english_name(rules.country), NATIVE_NAMES.get(rules.country, "")]
+    for alias, code in COUNTRY_ALIASES.items():
+        if code == rules.country:
+            labels.append(alias)
+    tokens: set[str] = set()
+    for label in labels:
+        tokens.update(normalise(label))
+    return tokens
+
+
+def _arbeitnow_place_ok(location: str, is_remote: bool, rules) -> bool:
+    """Keep Arbeitnow rows in the searched city, or in the country with no city.
+
+    classify_place keeps a row when any office phrase matches. The country
+    name is one of those phrases, so Cologne, Germany is kept for a Frankfurt
+    search, while a bare Munich is dropped because it names neither phrase.
+    This check is only for Arbeitnow. Company pages and remote boards stay
+    on classify_place.
+    """
+    if looks_remote(location, is_remote):
+        return True
+    for _name, phrases in rules.offices:
+        for phrase in phrases:
+            if canonical_country(phrase):
+                continue
+            if contains_phrase(phrase, location):
+                return True
+    tokens = normalise(location)
+    allowed = _country_tokens(rules)
+    return bool(tokens) and all(token in allowed for token in tokens)
+
+
 def filter_board_jobs(
     jobs: list[dict],
     settings: Settings,
@@ -190,12 +291,21 @@ def filter_board_jobs(
             settings.title_keywords,
             settings.require_title_match,
         )
+        if _whole_board(job):
+            keywords = settings.title_keywords or {}
+            roles = [
+                role
+                for role in roles
+                if _title_matches_role(job.get("title") or "", role, keywords.get(role))
+            ]
         if not roles:
             continue
         location = job.get("location") or ""
         is_remote = bool(job.get("is_remote"))
         place = classify_place(location, is_remote, rules)
         if not place:
+            continue
+        if _source_name(job) == "arbeitnow" and not _arbeitnow_place_ok(location, is_remote, rules):
             continue
         row = {
             "title": clean_text(job.get("title")),

@@ -537,7 +537,7 @@ def _patch_urlopen(monkeypatch, handler):
 def test_http_get_retries_429_and_honours_numeric_retry_after(monkeypatch):
     calls = {"n": 0}
 
-    def urlopen(_request, timeout=45):
+    def urlopen(_request, timeout=45, context=None):
         calls["n"] += 1
         raise _http_error(429, retry_after="4")
 
@@ -550,7 +550,7 @@ def test_http_get_retries_429_and_honours_numeric_retry_after(monkeypatch):
 
 
 def test_http_get_caps_retry_after_at_30_seconds(monkeypatch):
-    def urlopen(_request, timeout=45):
+    def urlopen(_request, timeout=45, context=None):
         raise _http_error(429, retry_after="90")
 
     _patch_urlopen(monkeypatch, urlopen)
@@ -563,7 +563,7 @@ def test_http_get_caps_retry_after_at_30_seconds(monkeypatch):
 def test_http_get_uses_backoff_when_retry_after_is_not_numeric(monkeypatch):
     calls = {"n": 0}
 
-    def urlopen(_request, timeout=45):
+    def urlopen(_request, timeout=45, context=None):
         calls["n"] += 1
         raise _http_error(503, retry_after="Wed, 21 Oct 2015 07:28:00 GMT")
 
@@ -578,7 +578,7 @@ def test_http_get_uses_backoff_when_retry_after_is_not_numeric(monkeypatch):
 def test_http_get_retries_timeouts_then_returns_the_body(monkeypatch):
     calls = {"n": 0}
 
-    def urlopen(_request, timeout=45):
+    def urlopen(_request, timeout=45, context=None):
         calls["n"] += 1
         if calls["n"] < 3:
             raise TimeoutError("timed out")
@@ -598,7 +598,7 @@ def test_http_get_retries_timeouts_then_returns_the_body(monkeypatch):
 def test_http_get_does_not_retry_ordinary_client_or_connection_errors(monkeypatch, exc):
     calls = {"n": 0}
 
-    def urlopen(_request, timeout=45):
+    def urlopen(_request, timeout=45, context=None):
         calls["n"] += 1
         raise exc
 

@@ -1,0 +1,22 @@
+{
+  "titles": [
+    {"role": "risk manager", "source": "arbeitnow", "title": "Manager IT-Quality, Risk und BCM (w/m/d)", "kept": true},
+    {"role": "risk manager", "source": "arbeitnow", "title": "Senior Risk Manager Credit", "kept": true},
+    {"role": "risk manager", "source": "arbeitnow", "title": "HR Manager (m/w/d)", "kept": false},
+    {"role": "risk manager", "source": "arbeitnow", "title": "Gebietsverkaufsleiter (W/M/X) Cnc-Drehmaschinen", "kept": false},
+    {"role": "risk manager", "source": "arbeitnow", "title": "Senior Credit Analyst m/w/d", "kept": false},
+    {"role": "software engineer", "source": "arbeitnow", "title": "Senior Software Engineer (Backend)", "kept": true},
+    {"role": "software engineer", "source": "arbeitnow", "title": "Marketing Manager (gn)", "kept": false},
+    {"role": "data scientist", "source": "remotive", "title": "Senior Data Scientist", "kept": true},
+    {"role": "data scientist", "source": "remotive", "title": "Customer Success Architect", "kept": false},
+    {"role": "risk manager", "source": "company", "title": "HR Manager", "kept": true}
+  ],
+  "places": [
+    {"location": "Frankfurt am Main", "is_remote": false, "kept": true},
+    {"location": "Frankfurt am Main, Hessen, Germany", "is_remote": false, "kept": true},
+    {"location": "Cologne, North Rhine-Westphalia, Germany", "is_remote": false, "kept": false},
+    {"location": "Regensburg, Bayern, Germany", "is_remote": false, "kept": false},
+    {"location": "Germany", "is_remote": false, "kept": true},
+    {"location": "Remote (within Germany)", "is_remote": true, "kept": true}
+  ]
+}
