@@ -27,6 +27,11 @@ from synonyms import suggestions_for
 HEADER = """# Created by the setup wizard.
 # To change this search, run:  python scrape.py --setup
 # You can also edit this file, then run:  python scrape.py
+#
+# The search writes output/shortlist.xlsx. Open the Top-N sheet.
+# That is the short list. output/jobs.xlsx is the full search.
+# shortlist.enabled below is true. Set it to false to turn the short list off.
+# To change what it keeps, see the README. You only add the lines you want to change.
 
 """
 
@@ -404,6 +409,7 @@ def build_config(
             "excel": "jobs.xlsx",
             "seen_file": "data/seen_jobs.json",
         },
+        "shortlist": {"enabled": True},
     }
     if exclude:
         data["exclude_keywords"] = [word.lower() for word in exclude]
@@ -488,7 +494,8 @@ def summary_text(data: dict) -> str:
         f"  Results per search: {data['results_per_search']}\n"
         f"  Posted within days: {data['posted_within_days']}\n"
         f"  Websites: {', '.join(enabled) or 'none'}\n"
-        f"  Companies: {company_line}"
+        f"  Companies: {company_line}\n"
+        "  Shortlist: on. After the search, open output/shortlist.xlsx (the Top-N sheet)."
     )
 
 

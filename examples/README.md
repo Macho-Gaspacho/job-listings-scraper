@@ -14,7 +14,9 @@ cp examples/berlin-software-engineer.yaml config.yaml
 cp examples/nurse-netherlands.yaml config.yaml
 ```
 
-Then run `python scrape.py`.
+Then run `python scrape.py`. On a Mac, `python` is often missing, so use `.venv/bin/python scrape.py` after the start script has created `.venv`. On Windows, use `.venv\Scripts\python scrape.py`.
+
+Every search also writes `output/shortlist.xlsx`. Open the Top-N sheet. These example files do not need a `shortlist:` block. The shortlist is on unless you set `enabled: false`.
 
 - `accountant-toronto-canada.yaml` — an accountant in Toronto. English and French titles.
 - `berlin-software-engineer.yaml` — a software engineer in Berlin, and remote jobs in Germany. Indeed and LinkedIn only.

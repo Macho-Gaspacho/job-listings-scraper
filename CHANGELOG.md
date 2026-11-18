@@ -4,7 +4,10 @@
 
 ### Added
 
-- An offline CV generator tailors one saved job from facts in `profile/cv_profile.yaml`. It does not invent employers, dates, or skills. See [docs/cv-generator-design.md](docs/cv-generator-design.md). `python-docx` is the only new dependency.
+- The shortlist lowers the score of a posting written in a language you did not list, and says so in the reason. Those rows are removed only when you hide poor fits, or when `allowed_languages` is set. The same role at the same company in one city is kept once when the city is spelled two ways.
+- A shortlist runs at the end of a normal search. Open `output/shortlist.xlsx` and the Top-N sheet. Senior titles, internships, and postings that ask for 3 or more years are left out by default. The full search stays in `output/jobs.xlsx`. Rules can be changed under `shortlist:` in `config.yaml`. `python scrape.py --shortlist` rebuilds it from a saved file. `langdetect` runs on your computer. No API key is required.
+- LinkedIn and Indeed searches that fail with a proxy error, a timeout, or HTTP 429 are tried again after a pause. A block is not retried.
+- An offline CV generator tailors one saved job from facts in `profile/cv_profile.yaml`. It does not invent employers, dates, or skills. See [docs/cv-generator-design.md](docs/cv-generator-design.md). `python-docx` is the dependency that writes the document.
 - A guided interview (`python scrape.py --cv-interview`, and the launcher line "I don't have a CV yet - help me make one") writes `profile/cv_profile.yaml` from answers you type. Every section can be skipped, including paid work.
 - CV formats are discovered from `cv_templates/presets/*.yaml`. New formats: `nl_cv`, `es_cv`, `pl_cv`, and `ca_resume`. The job location suggests a format. `--format` overrides that suggestion.
 - GitHub Actions runs the tests on Ubuntu, Windows, and macOS, for Python 3.10, 3.12, and 3.13.

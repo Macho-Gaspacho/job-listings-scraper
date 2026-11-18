@@ -223,7 +223,14 @@ def hide_poor_fits(rows: list[dict], candidate) -> list[dict]:
     return kept
 
 
-def _run_search(config_path: Path, fetch=None, getter=None, verbose: bool = False) -> int:
+def _run_search(
+    config_path: Path,
+    fetch=None,
+    getter=None,
+    verbose: bool = False,
+    shortlist_enabled: bool = True,
+    skip_fetch: bool = False,
+) -> int:
     """Load a saved config, search, and write the spreadsheet.
 
     fetch(role, place, site) and getter(url) stand in for the live sites in tests.
@@ -306,7 +313,63 @@ def _run_search(config_path: Path, fetch=None, getter=None, verbose: bool = Fals
             "No listings came back. Try a broader role, add a company in "
             "config.yaml, or raise posted_within_days."
         )
+        return 0
+    if not shortlist_enabled:
+        print("Shortlist is off for this run.")
+        print(f"Full search: {settings.excel_path}")
+        return 0
+    # A stand-in fetch or getter means this is a test. Do not call LinkedIn.
+    allow_network = fetch is None and getter is None and not skip_fetch
+    if not _write_shortlist(settings, rows, allow_network=allow_network):
+        return 1
     return 0
+
+
+def _write_shortlist(settings: Settings, rows: list[dict], *, allow_network: bool) -> bool:
+    """Write output/shortlist.xlsx. Returns False when that file could not be written."""
+    from shortlist import load_rules, output_paths, run_shortlist
+
+    overlay = dict(settings.shortlist or {"enabled": True})
+    if overlay.get("enabled", True) is False:
+        print("Shortlist is off (shortlist.enabled is false in config.yaml).")
+        return True
+    overlay.setdefault("snippet_characters", settings.snippet_characters)
+    overlay.setdefault("pause_seconds", settings.pause_seconds)
+    try:
+        rules = load_rules(overlay)
+    except ValueError as exc:
+        print(f"Could not read the shortlist settings: {exc}")
+        return False
+    roles = list(settings.roles)
+    for phrases in (settings.title_keywords or {}).values():
+        roles.extend(phrases)
+    workbook, funnel_json, funnel_log, cache_path = output_paths(settings.csv_path)
+    try:
+        run_shortlist(
+            rows,
+            rules,
+            output_path=workbook,
+            funnel_json=funnel_json,
+            funnel_log=funnel_log,
+            cache_path=cache_path,
+            roles=roles,
+            get=None if not allow_network else _network_get,
+            skip_fetch=not allow_network,
+            spoken_languages=settings.candidate.languages,
+            strict_fit=settings.candidate.strict,
+        )
+    except Exception as exc:
+        print(f"The shortlist could not be written: {exc}")
+        print(f"The full search was still saved in {settings.excel_path}.")
+        return False
+    print(f"Full search: {settings.excel_path}")
+    return True
+
+
+def _network_get(url: str):
+    from shortlist import default_get
+
+    return default_get(url)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -393,8 +456,41 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Ask whether to search or make a CV. A double-click does this when a terminal is open.",
     )
+    parser.add_argument(
+        "--shortlist",
+        action="store_true",
+        help=(
+            "Only build the shortlist from a jobs file you already have. "
+            "Does not search again. Uses --jobs, or output/jobs.csv."
+        ),
+    )
+    parser.add_argument(
+        "--no-shortlist",
+        action="store_true",
+        help="Search, but do not build the shortlist.",
+    )
+    parser.add_argument(
+        "--skip-fetch",
+        action="store_true",
+        help="Build the shortlist from the saved descriptions only. Does not open LinkedIn.",
+    )
+    parser.add_argument(
+        "--cache",
+        default=None,
+        help="Description cache JSON. The default is output/description_cache.json next to the jobs file.",
+    )
+    parser.add_argument(
+        "--output",
+        default=None,
+        help="Where to write shortlist.xlsx when using --shortlist. The default is next to the jobs file.",
+    )
     try:
         args = parser.parse_args(argv)
+        if args.shortlist and args.no_shortlist:
+            print("Choose either --shortlist or --no-shortlist, not both.")
+            return 1
+        if args.shortlist:
+            return _run_shortlist_only(args, project_dir)
         if args.cv_interview:
             return _run_interview(args, project_dir)
         if args.cv:
@@ -409,9 +505,19 @@ def main(argv: list[str] | None = None) -> int:
                 )
             return setup_wizard.run_wizard(
                 config_path,
-                run_search=lambda path: _run_search(Path(path), verbose=args.verbose),
+                run_search=lambda path: _run_search(
+                    Path(path),
+                    verbose=args.verbose,
+                    shortlist_enabled=not args.no_shortlist,
+                    skip_fetch=args.skip_fetch,
+                ),
             )
-        return _run_search(config_path, verbose=args.verbose)
+        return _run_search(
+            config_path,
+            verbose=args.verbose,
+            shortlist_enabled=not args.no_shortlist,
+            skip_fetch=args.skip_fetch,
+        )
     except KeyboardInterrupt:
         print("Stopped. Results collected so far were not saved.")
         return 130
@@ -436,6 +542,77 @@ def _cv_paths(args, project_dir: Path):
     folder = Path(args.cv_dir) if args.cv_dir else project_dir / "output" / "cv"
     on_date = date.fromisoformat(args.cv_date) if args.cv_date else None
     return jobs, profile, folder, on_date
+
+
+def _run_shortlist_only(args, project_dir: Path) -> int:
+    """Build the shortlist from a jobs file that is already on disk."""
+    from shortlist import load_rules, output_paths, read_jobs, run_shortlist
+
+    config_path = Path(args.config)
+    settings = None
+    if config_path.exists():
+        try:
+            settings = load_config(config_path)
+        except (OSError, ValueError, yaml.YAMLError) as exc:
+            print(f"Could not read the config file: {exc}")
+            return 1
+    if args.jobs:
+        jobs_path = Path(args.jobs)
+    elif settings is not None:
+        jobs_path = settings.csv_path
+    else:
+        jobs_path = project_dir / "output" / "jobs.csv"
+    try:
+        rows = read_jobs(jobs_path)
+    except (OSError, ValueError) as exc:
+        print(f"Could not read the jobs file: {exc}")
+        return 1
+    if not rows:
+        print(f"No listings in {jobs_path}.")
+        return 1
+    overlay = dict(settings.shortlist) if settings is not None else {"enabled": True}
+    if settings is not None:
+        overlay.setdefault("snippet_characters", settings.snippet_characters)
+        overlay.setdefault("pause_seconds", settings.pause_seconds)
+    # An explicit run builds the list even when the config turned it off.
+    overlay["enabled"] = True
+    try:
+        rules = load_rules(overlay)
+    except ValueError as exc:
+        print(f"Could not read the shortlist settings: {exc}")
+        return 1
+    roles = []
+    if settings is not None:
+        roles.extend(settings.roles)
+        for phrases in (settings.title_keywords or {}).values():
+            roles.extend(phrases)
+    workbook, funnel_json, funnel_log, cache_path = output_paths(jobs_path)
+    if args.output:
+        workbook = Path(args.output)
+        funnel_json = workbook.with_name("shortlist-funnel.json")
+        funnel_log = workbook.with_name("shortlist-funnel.log")
+    if args.cache:
+        cache_path = Path(args.cache)
+    try:
+        spoken = None if settings is None else settings.candidate.languages
+        strict = False if settings is None else settings.candidate.strict
+        run_shortlist(
+            rows,
+            rules,
+            output_path=workbook,
+            funnel_json=funnel_json,
+            funnel_log=funnel_log,
+            cache_path=cache_path,
+            roles=roles,
+            get=None if args.skip_fetch else _network_get,
+            skip_fetch=args.skip_fetch,
+            spoken_languages=spoken,
+            strict_fit=strict,
+        )
+    except Exception as exc:
+        print(f"The shortlist could not be written: {exc}")
+        return 1
+    return 0
 
 
 def _run_interview(args, project_dir: Path) -> int:
@@ -492,9 +669,19 @@ def _run_menu(args, project_dir: Path) -> int:
                 )
             return setup_wizard.run_wizard(
                 config_path,
-                run_search=lambda path: _run_search(Path(path), verbose=args.verbose),
+                run_search=lambda path: _run_search(
+                    Path(path),
+                    verbose=args.verbose,
+                    shortlist_enabled=not args.no_shortlist,
+                    skip_fetch=args.skip_fetch,
+                ),
             )
-        return _run_search(config_path, verbose=args.verbose)
+        return _run_search(
+            config_path,
+            verbose=args.verbose,
+            shortlist_enabled=not args.no_shortlist,
+            skip_fetch=args.skip_fetch,
+        )
 
     return run_launcher_menu(
         input,

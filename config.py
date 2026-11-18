@@ -67,6 +67,7 @@ class Place:
     remote: bool = False
     distance_miles: int | None = None
     search_indeed: bool = True
+    country: str | None = None
 
 
 @dataclass
@@ -134,6 +135,7 @@ class Settings:
     job_boards: list[str] | None = None
     link_outs: tuple[str, ...] = ()
     candidate: Candidate = field(default_factory=Candidate)
+    shortlist: dict = field(default_factory=lambda: {"enabled": True})
 
 
 def _text_list(values: object) -> list[str]:
@@ -380,6 +382,29 @@ def _load_filters(raw: dict) -> Filters:
     )
 
 
+def _place_country(entry: dict) -> str | None:
+    """Indeed country for this city, when the file names one."""
+    provided = entry.get("country")
+    if not provided:
+        return None
+    code = canonical_country(str(provided))
+    return code or str(provided).strip().lower()
+
+
+def _load_shortlist(raw: dict) -> dict:
+    """The shortlist block. Missing means on, with the built-in defaults."""
+    if "shortlist" not in raw or raw.get("shortlist") is None:
+        return {"enabled": True}
+    block = raw.get("shortlist")
+    if isinstance(block, bool):
+        return {"enabled": block}
+    if not isinstance(block, dict):
+        raise ValueError("shortlist in config.yaml should be a group of settings.")
+    merged = {"enabled": True}
+    merged.update(block)
+    return merged
+
+
 def _load_candidate(raw: dict) -> Candidate:
     """Optional answers. A config without candidate: behaves as before."""
     if "candidate" not in raw or raw.get("candidate") is None:
@@ -462,6 +487,7 @@ def load_config(path: str | Path) -> Settings:
                 remote=bool(entry.get("remote", False)),
                 distance_miles=miles,
                 search_indeed=bool(entry.get("search_indeed", True)),
+                country=_place_country(entry),
             )
         )
     if not places:
@@ -522,4 +548,5 @@ def load_config(path: str | Path) -> Settings:
         job_boards=job_boards,
         link_outs=link_outs,
         candidate=_load_candidate(raw),
+        shortlist=_load_shortlist(raw),
     )

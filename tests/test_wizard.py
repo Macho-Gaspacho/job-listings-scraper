@@ -437,6 +437,8 @@ def test_wizard_defaults_and_offers_to_search(tmp_path):
     assert settings.places[1].remote is True
     assert settings.places[1].indeed_location == "United States"
     assert settings.sites == ["indeed", "linkedin"]
+    assert settings.shortlist["enabled"] is True
+    assert "shortlist:" in config.read_text(encoding="utf-8")
     assert searched == [config]
 
 

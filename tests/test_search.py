@@ -2,7 +2,7 @@
 
 from config import Place, Settings
 from scrape import collect_listings
-from sources import build_search, take_records
+from sources import build_search, fetch_listings, take_records
 
 
 def _settings(**overrides):
@@ -65,6 +65,81 @@ def test_build_search_for_remote_jobs():
     assert linkedin["location"] == "Italy"
     assert linkedin["fetch_description"] is True
     assert "distance" not in linkedin
+
+
+def test_indeed_country_follows_the_city_when_the_file_names_one():
+    settings = _settings(country="netherlands")
+    berlin = Place(
+        name="Berlin, Germany",
+        indeed_location="Berlin, Germany",
+        linkedin_location="Berlin, Germany",
+        country="germany",
+    )
+    query = build_search(settings, "Product Manager", berlin, "indeed")
+    assert query["country_indeed"] == "germany"
+
+
+def test_fetch_listings_retries_a_proxy_error_and_not_a_block(monkeypatch):
+    calls = {"n": 0}
+    sleeps = []
+
+    def scrape_jobs(**_kwargs):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise RuntimeError("ProxyError: proxy connection failed")
+
+        class Frame:
+            attrs = {}
+
+            def __len__(self):
+                return 1
+
+            def to_dict(self, orient):
+                return [
+                    {
+                        "title": "Product Manager",
+                        "company": "ACME",
+                        "job_url": "https://example.com/j",
+                        "description": "A product manager role.",
+                        "location": "Milan",
+                    }
+                ]
+
+        return Frame()
+
+    monkeypatch.setattr("sources.scrape_jobs", scrape_jobs)
+    settings = _settings(pause_seconds=2)
+    rows = fetch_listings(
+        settings,
+        "Product Manager",
+        settings.places[0],
+        "linkedin",
+        sleeper=sleeps.append,
+    )
+    assert calls["n"] == 3
+    assert rows[0]["title"] == "Product Manager"
+    assert sleeps == [2, 4]
+
+    calls["n"] = 0
+
+    def blocked(**_kwargs):
+        calls["n"] += 1
+        raise RuntimeError("LinkedIn blocked this search")
+
+    monkeypatch.setattr("sources.scrape_jobs", blocked)
+    try:
+        fetch_listings(
+            settings,
+            "Product Manager",
+            settings.places[0],
+            "linkedin",
+            sleeper=sleeps.append,
+        )
+    except RuntimeError as exc:
+        assert "blocked" in str(exc)
+    else:
+        raise AssertionError("expected the block to be raised")
+    assert calls["n"] == 1
 
 
 def test_take_records_raises_when_a_site_returns_an_error_and_no_rows():
