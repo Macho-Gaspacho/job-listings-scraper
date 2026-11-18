@@ -18,7 +18,8 @@ import json
 import re
 import time
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from functools import lru_cache
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -29,6 +30,7 @@ from openpyxl.utils import get_column_letter
 
 from listings import OUTPUT_FIELDS, city_key, clean_text, company_name_key
 from matching import normalise, phrase_matches
+from places import norm, resolve_place
 from save_results import _http_link, safe_cell
 from sources import retry_delay, transient_reason
 
@@ -294,6 +296,9 @@ class Rules:
     snippet_characters: int = 280
     pause_seconds: float = 2.0
     weights: dict = field(default_factory=dict)
+    # None means the language question was skipped. An empty tuple does too.
+    spoken_languages: tuple[str, ...] | None = None
+    strict_fit: bool = False
 
 
 def load_rules(overlay: dict | None = None) -> Rules:
@@ -655,6 +660,7 @@ def score_row(row: dict, rules: Rules) -> tuple[int, str]:
     body = _body_text(row)
     weights = rules.weights
     role_points, role_why = _role_score(title, clean_text(row.get("role_searched")), rules)
+    row["role_points"] = role_points
     kind, evidence = junior_evidence(title, body)
     if kind == "title":
         junior_points = weights.get("junior_title", 20)
@@ -731,17 +737,81 @@ def _role_score(title: str, role_searched: str, rules: Rules) -> tuple[int, str]
 
 
 def _language_score(row: dict, rules: Rules) -> tuple[int, str]:
-    if not rules.allowed_languages:
-        return 0, ""
     lang, prob = detect_language(_body_text(row) or clean_text(row.get("title")))
-    if lang is None or prob < rules.language_min_probability:
-        return 0, "language not detected"
-    if lang not in rules.allowed_languages:
-        return 0, ""
-    name = _LANG_NAMES.get(lang, lang)
-    if lang == rules.allowed_languages[0]:
-        return rules.weights.get("language", 10), f"{name} posting"
-    return rules.weights.get("language_secondary", 7), f"{name} posting"
+    points = 0
+    why = ""
+    if rules.allowed_languages:
+        if lang is None or prob < rules.language_min_probability:
+            why = "language not detected"
+        elif lang in rules.allowed_languages:
+            name = _LANG_NAMES.get(lang, lang)
+            if lang == rules.allowed_languages[0]:
+                points = rules.weights.get("language", 10)
+            else:
+                points = rules.weights.get("language_secondary", 7)
+            why = f"{name} posting"
+    unlisted = _unlisted_language_name(lang, prob, rules)
+    if unlisted:
+        points -= rules.weights.get("unlisted_language", 40)
+        note = f"posting is in {unlisted}, which you did not list"
+        why = note if not why else f"{why}; {note}"
+    return points, why
+
+
+def _spoken_codes(names: tuple[str, ...] | None) -> frozenset[str]:
+    """ISO codes for the languages the person said they can work in."""
+    if not names:
+        return frozenset()
+    table = _language_codes()
+    codes = []
+    for name in names:
+        code = table.get(str(name).strip().casefold())
+        if code:
+            codes.append(code)
+    return frozenset(codes)
+
+
+@lru_cache(maxsize=1)
+def _language_codes() -> dict[str, str]:
+    """Map a typed language name, and its canonical English name, to an ISO code."""
+    path = Path(__file__).resolve().parent / "signals" / "language_names.yaml"
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    found: dict[str, str] = {}
+    for name, aliases in raw.items():
+        code = ""
+        for alias in aliases or []:
+            text = str(alias).strip().casefold()
+            if re.fullmatch(r"[a-z]{2}", text):
+                code = text
+                break
+        if not code:
+            continue
+        found[str(name).strip().casefold()] = code
+        found[code] = code
+        for alias in aliases or []:
+            found[str(alias).strip().casefold()] = code
+    return found
+
+
+def _unlisted_language_name(lang: str | None, prob: float, rules: Rules) -> str:
+    """The posting's language when the person listed languages and this is not one of them."""
+    codes = _spoken_codes(rules.spoken_languages)
+    if not codes or lang is None or prob < rules.language_min_probability:
+        return ""
+    if lang in codes:
+        return ""
+    return _LANG_NAMES.get(lang, lang)
+
+
+def unlisted_language_reason(row: dict, rules: Rules) -> str | None:
+    """Why strict mode drops this row, or None when it stays."""
+    if not rules.strict_fit:
+        return None
+    lang, prob = detect_language(_body_text(row) or clean_text(row.get("title")))
+    name = _unlisted_language_name(lang, prob, rules)
+    if not name:
+        return None
+    return f"posting is in {name}, which you did not list"
 
 
 def _location_score(row: dict, rules: Rules) -> tuple[int, str]:
@@ -1181,6 +1251,94 @@ def _country_drop(row: dict, rules: Rules) -> str | None:
     return None
 
 
+def _canonical_city(text: str) -> str:
+    """A stable city key. Roma and Rome in Italy become the same key.
+
+    The first piece is the city and the last piece is the country, so a
+    region in the middle (LAZ, Latium, Lombardy) does not matter. GeoNames
+    supplies the local names. An unknown place falls back to the first word.
+    """
+    cleaned = clean_text(text)
+    if not cleaned:
+        return ""
+    parts = [part.strip() for part in cleaned.split(",") if part.strip()]
+    if not parts:
+        return ""
+    query = parts[0] if len(parts) == 1 else f"{parts[0]}, {parts[-1]}"
+    try:
+        result = resolve_place(query)
+    except FileNotFoundError:
+        result = None
+    if result is not None and result.status in {"ok", "confirm"} and result.city and result.country:
+        return f"{norm(result.city)}|{result.country}"
+    return city_key(parts[0])
+
+
+def _city_identity(row: dict) -> str:
+    """The city on the row. The searched place is used only when the location is blank."""
+    location = clean_text(row.get("location"))
+    if location:
+        found = _canonical_city(location)
+        if found:
+            return found
+    return _canonical_city(clean_text(row.get("place_searched")))
+
+
+def _role_identity(row: dict) -> tuple[str, ...]:
+    return tuple(sorted(set(normalise(_core_title(clean_text(row.get("title")))))))
+
+
+def _richness(row: dict) -> tuple:
+    """Prefer the row whose own text is longer, so the link matches the description."""
+    own = clean_text(row.get("description"))
+    full = 0 if row.get("description_status") in {"snippet", "unverified"} else 1
+    return (len(own), full, clean_text(row.get("date_posted")))
+
+
+def collapse_same_city(rows: list[dict]) -> tuple[list[dict], int]:
+    """One row per role, company, and city. The longer description is kept.
+
+    Returns the kept rows and how many extras were combined away.
+    """
+    groups: dict[tuple, list[dict]] = {}
+    order: list[tuple] = []
+    for index, row in enumerate(rows):
+        company = company_name_key(row.get("company"))
+        title = _role_identity(row)
+        city = _city_identity(row)
+        if company and title and city:
+            key = (company, title, city)
+        else:
+            key = ("row", index)
+        if key not in groups:
+            order.append(key)
+            groups[key] = []
+        groups[key].append(row)
+    kept: list[dict] = []
+    combined = 0
+    for key in order:
+        group = groups[key]
+        if len(group) == 1:
+            kept.append(group[0])
+            continue
+        group.sort(key=_richness, reverse=True)
+        kept.append(group[0])
+        combined += len(group) - 1
+    return kept, combined
+
+
+def _rank_key(row: dict) -> tuple:
+    """Higher is better. Equal scores prefer a closer role, a fuller text, then a newer date."""
+    full = 0 if row.get("description_status") in {"snippet", "unverified"} else 1
+    return (
+        int(row.get("score") or 0),
+        int(row.get("role_points") or 0),
+        full,
+        clean_text(row.get("date_posted")),
+        len(_body_text(row)),
+    )
+
+
 def _description_drop(row: dict, rules: Rules) -> str | None:
     text = _body_text(row).casefold()
     for phrase in rules.description_exclude:
@@ -1202,9 +1360,24 @@ def run_shortlist(
     sleeper=time.sleep,
     skip_fetch: bool = False,
     pause_seconds: float | None = None,
+    spoken_languages: tuple[str, ...] | None = None,
+    strict_fit: bool = False,
 ) -> dict:
-    """Filter, score, and write the workbook. Returns the funnel and the top rows."""
+    """Filter, score, and write the workbook. Returns the funnel and the top rows.
+
+    spoken_languages is what the person said they can work in. None means the
+    question was skipped, and the language of the posting does not change the
+    score. strict_fit drops a posting written in a language they did not list.
+    """
     rules = rules or load_rules()
+    if spoken_languages is not None and not tuple(spoken_languages):
+        spoken_languages = None
+    if spoken_languages is not None or strict_fit:
+        rules = replace(
+            rules,
+            spoken_languages=None if spoken_languages is None else tuple(spoken_languages),
+            strict_fit=bool(strict_fit),
+        )
     prepared = [normalize_row(row) for row in rows]
     role_names = list(roles or [])
     for row in prepared:
@@ -1243,6 +1416,8 @@ def run_shortlist(
         pause_seconds=pause_seconds,
     )
     twins = match_twins(kept, rules.snippet_characters)
+    kept, combined = collapse_same_city(kept)
+    funnel.append(("After combining the same role in one city", len(kept)))
 
     stage = []
     for row in kept:
@@ -1263,13 +1438,18 @@ def run_shortlist(
     funnel.append(("After experience filter", len(kept)))
 
     stage = []
-    if rules.allowed_languages:
+    if rules.allowed_languages or rules.strict_fit:
         for row in kept:
             body = _body_text(row)
-            if not body:
-                reason = language_drop_reason(clean_text(row.get("title")), rules, title_only=True)
+            if rules.allowed_languages:
+                if not body:
+                    reason = language_drop_reason(clean_text(row.get("title")), rules, title_only=True)
+                else:
+                    reason = language_drop_reason(body, rules)
             else:
-                reason = language_drop_reason(body, rules)
+                reason = None
+            if reason is None:
+                reason = unlisted_language_reason(row, rules)
             if reason:
                 drops["language"][reason] += 1
             else:
@@ -1295,8 +1475,7 @@ def run_shortlist(
         row["required_years"] = _years_for(row)
         lang, prob = detect_language(_body_text(row) or clean_text(row.get("title")))
         row["detected_language"] = f"{_LANG_NAMES.get(lang, lang)} ({prob:.0%})" if lang else ""
-    kept.sort(key=lambda item: clean_text(item.get("date_posted")), reverse=True)
-    kept.sort(key=lambda item: int(item["score"]), reverse=True)
+    kept.sort(key=_rank_key, reverse=True)
     top = kept[: rules.top_n]
     funnel.append(("Top-N", len(top)))
 
@@ -1307,6 +1486,7 @@ def run_shortlist(
         "Descriptions fetched this run": fetched,
         "Description fetches that failed": failed,
         "Rows that used another site's description": twins,
+        "Duplicate rows combined": combined,
         "Rows still missing a full description": sum(
             1 for row in kept if row.get("description_status") in {"snippet", "unverified"}
         ),

@@ -4,6 +4,7 @@
 
 ### Added
 
+- The shortlist lowers the score of a posting written in a language you did not list, and says so in the reason. Those rows are removed only when you hide poor fits, or when `allowed_languages` is set. The same role at the same company in one city is kept once when the city is spelled two ways.
 - A shortlist runs at the end of a normal search. Open `output/shortlist.xlsx` and the Top-N sheet. Senior titles, internships, and postings that ask for 3 or more years are left out by default. The full search stays in `output/jobs.xlsx`. Rules can be changed under `shortlist:` in `config.yaml`. `python scrape.py --shortlist` rebuilds it from a saved file. `langdetect` runs on your computer. No API key is required.
 - LinkedIn and Indeed searches that fail with a proxy error, a timeout, or HTTP 429 are tried again after a pause. A block is not retried.
 - An offline CV generator tailors one saved job from facts in `profile/cv_profile.yaml`. It does not invent employers, dates, or skills. See [docs/cv-generator-design.md](docs/cv-generator-design.md). `python-docx` is the dependency that writes the document.

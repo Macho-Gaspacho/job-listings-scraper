@@ -137,7 +137,9 @@ shortlist:
         - netherlands
 ```
 
-`allowed_languages` is empty by default, which keeps postings in every language. Add codes such as `en`, `it`, `de`, or `nl` to keep only those. To keep jobs no matter how many years they ask for, set `max_required_years:` with nothing after the colon. `enabled: false` turns the shortlist off.
+If you answered the language question during setup, a posting written in a language you did not list stays in the full list but scores lower, and the reason says so. It usually falls out of the top 40. Those rows are removed only when you asked to hide jobs that do not fit, or when you set `allowed_languages`. Skipping the language question leaves every language scored the same.
+
+`allowed_languages` is empty by default. Add codes such as `en`, `it`, `de`, or `nl` to keep only those. The same role at the same company in one city is kept once, even when one site writes Roma and another writes Rome. To keep jobs no matter how many years they ask for, set `max_required_years:` with nothing after the colon. `enabled: false` turns the shortlist off.
 
 Run the shortlist again on a spreadsheet you already have, without searching.
 

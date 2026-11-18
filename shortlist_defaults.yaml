@@ -101,3 +101,6 @@ weights:
   language_secondary: 7
   keyword_each: 3
   keyword_cap: 10
+  # Subtracted when the posting is in a language the person did not list.
+  # The row stays in the full list unless they asked to hide poor fits.
+  unlisted_language: 40

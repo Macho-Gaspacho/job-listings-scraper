@@ -355,6 +355,8 @@ def _write_shortlist(settings: Settings, rows: list[dict], *, allow_network: boo
             roles=roles,
             get=None if not allow_network else _network_get,
             skip_fetch=not allow_network,
+            spoken_languages=settings.candidate.languages,
+            strict_fit=settings.candidate.strict,
         )
     except Exception as exc:
         print(f"The shortlist could not be written: {exc}")
@@ -592,6 +594,8 @@ def _run_shortlist_only(args, project_dir: Path) -> int:
     if args.cache:
         cache_path = Path(args.cache)
     try:
+        spoken = None if settings is None else settings.candidate.languages
+        strict = False if settings is None else settings.candidate.strict
         run_shortlist(
             rows,
             rules,
@@ -602,6 +606,8 @@ def _run_shortlist_only(args, project_dir: Path) -> int:
             roles=roles,
             get=None if args.skip_fetch else _network_get,
             skip_fetch=args.skip_fetch,
+            spoken_languages=spoken,
+            strict_fit=strict,
         )
     except Exception as exc:
         print(f"The shortlist could not be written: {exc}")

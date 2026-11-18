@@ -145,7 +145,7 @@ def test_twin_description_supplies_the_years_the_snippet_missed(tmp_path):
     ]
     result = run_shortlist(rows, rules, skip_fetch=True, pause_seconds=0, output_path=tmp_path / "out.xlsx")
     assert result["funnel"][0]["count"] == 2
-    assert result["funnel"][2]["count"] == 0
+    assert result["funnel"][3]["count"] == 0
     assert result["drop_reasons"]["experience"]
     reason = next(iter(result["drop_reasons"]["experience"]))
     assert "10" in reason
@@ -172,10 +172,10 @@ def test_short_snippet_without_a_twin_stays_and_does_not_claim_junior(tmp_path):
 def test_language_filter_drops_german_and_can_be_left_off():
     german = _row(title="Product Manager", description=GERMAN, location="Berlin, Germany")
     limited = run_shortlist([german], load_rules({"allowed_languages": ["en", "it"]}), skip_fetch=True, pause_seconds=0)
-    assert limited["funnel"][3]["count"] == 0
+    assert limited["funnel"][4]["count"] == 0
     assert any("german" in reason.casefold() for reason in limited["drop_reasons"]["language"])
     open_rules = run_shortlist([german], load_rules(), skip_fetch=True, pause_seconds=0)
-    assert open_rules["funnel"][3]["count"] == 1
+    assert open_rules["funnel"][4]["count"] == 1
 
 
 def test_top_n_workbook_has_the_three_sheets_and_a_reason(tmp_path):
@@ -225,7 +225,7 @@ def test_cache_is_used_and_the_fetcher_is_not_called(tmp_path):
         skip_fetch=False,
         pause_seconds=0,
     )
-    assert result["funnel"][2]["count"] == 0
+    assert result["funnel"][3]["count"] == 0
     assert result["meta"]["Descriptions fetched this run"] == 0
 
 
@@ -309,6 +309,147 @@ def test_defaults_are_on_without_a_config_block(tmp_path):
     rows = read_jobs(path)
     assert rows[0]["title"] == "Product Manager"
     assert rows[0]["company"] == "ACME"
+
+
+def test_same_city_with_two_spellings_is_one_row():
+    rules = load_rules()
+    short = "Zucchetti is hiring a project manager in Rome for a digital team."
+    full = (ENGLISH + " ") * 3 + "This project manager role is based in Rome."
+    result = run_shortlist(
+        [
+            _row(
+                title="Project Manager",
+                company="Zucchetti",
+                source="indeed",
+                location="Roma, LAZ, Italy",
+                place_searched="Rome, Italy",
+                description=short,
+                url="https://example.com/indeed",
+                role_searched="Project Manager",
+            ),
+            _row(
+                title="Project Manager",
+                company="Zucchetti",
+                source="linkedin",
+                location="Rome, Latium, Italy",
+                place_searched="Rome, Italy",
+                description=full,
+                url="https://www.linkedin.com/jobs/view/1",
+                role_searched="Project Manager",
+            ),
+        ],
+        rules,
+        skip_fetch=True,
+        pause_seconds=0,
+    )
+    assert result["meta"]["Duplicate rows combined"] == 1
+    assert result["funnel"][-1]["count"] == 1
+    assert result["top"][0]["url"].endswith("/1")
+    assert result["top"][0]["location"] == "Rome, Latium, Italy"
+
+
+def test_milan_and_milano_collapse_but_rome_and_milan_do_not():
+    rules = load_rules()
+    text = ENGLISH
+    result = run_shortlist(
+        [
+            _row(title="Product Manager", company="ACME", location="Milano, Lombardy, Italy", url="https://example.com/a", description=text),
+            _row(title="Product Manager", company="ACME", location="Milan, Italy", url="https://example.com/b", description=text + " Extra detail about the team."),
+            _row(title="Product Manager", company="ACME", location="Rome, Italy", url="https://example.com/c", description=text),
+        ],
+        rules,
+        skip_fetch=True,
+        pause_seconds=0,
+    )
+    urls = {item["url"] for item in result["top"]}
+    assert "https://example.com/c" in urls
+    assert len(result["top"]) == 2
+    assert result["meta"]["Duplicate rows combined"] == 1
+
+
+def test_unlisted_language_lowers_the_score_without_dropping_the_row():
+    rules = load_rules()
+    german = _row(title="Product Manager", company="Caya", location="Berlin, Germany", description=GERMAN, url="https://example.com/de")
+    english = _row(description=ENGLISH, url="https://example.com/en")
+    plain = run_shortlist([german, english], rules, skip_fetch=True, pause_seconds=0)
+    marked = run_shortlist(
+        [german, english],
+        rules,
+        spoken_languages=("English",),
+        skip_fetch=True,
+        pause_seconds=0,
+    )
+    assert plain["funnel"][4]["count"] == 2
+    assert marked["funnel"][4]["count"] == 2
+    german_row = next(item for item in marked["top"] if item["url"].endswith("/de"))
+    english_row = next(item for item in marked["top"] if item["url"].endswith("/en"))
+    assert german_row["score"] < english_row["score"]
+    assert "did not list" in german_row["reason"].casefold()
+    assert "german" in german_row["reason"].casefold()
+    assert "did not list" not in english_row["reason"].casefold()
+
+
+def test_skipped_language_question_matches_a_run_with_no_languages():
+    rules = load_rules()
+    row = _row(description=GERMAN, location="Berlin, Germany", company="Caya")
+    alone = score_row(dict(row), rules)
+    answered = run_shortlist([row], rules, spoken_languages=None, skip_fetch=True, pause_seconds=0)
+    assert answered["top"][0]["score"] == alone[0]
+    assert "did not list" not in answered["top"][0]["reason"].casefold()
+
+
+def test_strict_mode_drops_a_language_the_person_did_not_list():
+    rules = load_rules()
+    result = run_shortlist(
+        [
+            _row(description=GERMAN, location="Berlin, Germany", company="Caya", url="https://example.com/de"),
+            _row(description=ENGLISH, url="https://example.com/en"),
+        ],
+        rules,
+        spoken_languages=("English", "Italian"),
+        strict_fit=True,
+        skip_fetch=True,
+        pause_seconds=0,
+    )
+    assert result["funnel"][4]["count"] == 1
+    assert result["top"][0]["url"].endswith("/en")
+    assert any("did not list" in reason.casefold() for reason in result["drop_reasons"]["language"])
+
+
+def test_equal_scores_put_a_fuller_newer_posting_first():
+    rules = load_rules({"top_n": 2})
+    older = _row(
+        title="Designer",
+        company="Older",
+        role_searched="Designer",
+        description=(ENGLISH + " ") * 3,
+        date_posted="2026-11-01",
+        url="https://example.com/old",
+        source="indeed",
+    )
+    newer = _row(
+        title="Designer",
+        company="Newer",
+        role_searched="Designer",
+        description="Draw things.",
+        date_posted="2026-11-18",
+        url="https://example.com/new",
+        source="indeed",
+    )
+    # The short text is a snippet, so the fuller posting ranks first even though it is older.
+    result = run_shortlist([newer, older], rules, skip_fetch=True, pause_seconds=0)
+    assert result["top"][0]["score"] == result["top"][1]["score"]
+    assert result["top"][0]["url"].endswith("/old")
+    same_day = run_shortlist(
+        [
+            _row(title="Designer", company="A", role_searched="Designer", description=ENGLISH, date_posted="2026-11-02", url="https://example.com/a"),
+            _row(title="Designer", company="B", role_searched="Designer", description=ENGLISH + " More about the team and the work.", date_posted="2026-11-02", url="https://example.com/b"),
+        ],
+        rules,
+        skip_fetch=True,
+        pause_seconds=0,
+    )
+    assert same_day["top"][0]["url"].endswith("/b")
 
 
 def test_search_writes_the_shortlist_without_a_network_call(tmp_path, monkeypatch):
