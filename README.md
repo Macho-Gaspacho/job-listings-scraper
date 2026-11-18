@@ -28,10 +28,11 @@ flowchart LR
   wizard[Wizard] --> config[config.yaml]
   config --> sources[Sources]
   sources --> filter[Filter and dedupe]
-  filter --> files[Excel and CSV]
+  filter --> shortlist[Shortlist]
+  shortlist --> files[Top-N spreadsheet]
 ```
 
-You answer the questions, or edit `config.yaml`. The program asks Indeed, LinkedIn, remote job boards, and any company career pages you listed. It keeps titles and places that match, drops duplicates, and writes `output/jobs.xlsx` and `output/jobs.csv`.
+You answer the questions, or edit `config.yaml`. The program asks Indeed, LinkedIn, remote job boards, and any company career pages you listed. It keeps titles and places that match, drops duplicates, and writes a short list to `output/shortlist.xlsx`. The full search is still in `output/jobs.xlsx` and `output/jobs.csv`.
 
 ## Legal and fair use
 
@@ -98,9 +99,69 @@ Press Enter on the websites question for the recommended mix. Indeed and LinkedI
 
 A fresh download has no `config.yaml`, so the first run asks these questions and writes one. If you save a new search later, the old file is copied to `config.backup.yaml` first. Ready-made examples are in `examples/`.
 
-### Step 5. Open the spreadsheet
+### Step 5. Open the shortlist
 
-When the search finishes, open `output/jobs.xlsx`. The same rows are in `output/jobs.csv`. The first run can take several minutes.
+When the search finishes, open `output/shortlist.xlsx`. Click the **Top-N** sheet. That is the list to read: a few dozen jobs, each with a score and a sentence that says why it is there. You do not install anything else, and you do not need an account or an API key.
+
+The **Funnel** sheet shows how many listings were left out at each step. The **Ranked** sheet is every job that passed the filters, best first. The full search is still in `output/jobs.xlsx` and `output/jobs.csv`.
+
+The first run can take several minutes. If LinkedIn descriptions are missing, the program reads the public job page for the jobs that are still in the running, waits a couple of seconds between requests, and saves the text in `output/description_cache.json`. The next run reuses that file.
+
+### Change what the shortlist keeps
+
+You can leave this alone. The defaults suit a first job or a junior role: senior, director, lead, and internship titles are left out, and a posting that asks for 3 or more years is left out. The spreadsheet keeps the best 40. Every rule has a default, so a new `config.yaml` does not need a `shortlist:` section. The wizard writes `shortlist.enabled: true` so you can see that it is on.
+
+The program does not call a job junior just because the posting never mentions years. Junior points are added only when the title or the text says junior, associate, graduate, or entry-level, or when it asks for one or two years. If the years are not written down, the reason says **seniority not stated** and **years requirement not stated**.
+
+Indeed often sends only a short preview. The program does not open Indeed job pages. When the same role at the same company also appears from another site with a longer description, that longer text is used, and the reason says so.
+
+To change a rule, open `config.yaml` and add only the lines you want to change. The rest stay as they are in `shortlist_defaults.yaml`.
+
+```yaml
+shortlist:
+  enabled: true
+  top_n: 40
+  max_required_years: 3
+  allowed_languages:
+    - en
+    - it
+  exclude_companies:
+    - Example Corp
+  exclude_countries:
+    - russia
+  location_priorities:
+    - label: Netherlands
+      points: 15
+      places:
+        - amsterdam
+        - netherlands
+```
+
+`allowed_languages` is empty by default, which keeps postings in every language. Add codes such as `en`, `it`, `de`, or `nl` to keep only those. To keep jobs no matter how many years they ask for, set `max_required_years:` with nothing after the colon. `enabled: false` turns the shortlist off.
+
+Run the shortlist again on a spreadsheet you already have, without searching.
+
+Mac or Linux (on a Mac the `python` command is often missing, so use the one inside `.venv`):
+
+```bash
+.venv/bin/python scrape.py --shortlist
+```
+
+Windows:
+
+```bat
+.venv\Scripts\python scrape.py --shortlist
+```
+
+Double-clicking `start.command` on a Mac, `start.bat` on Windows, or `start.sh` on Linux still does a normal search, and that search builds the shortlist for you.
+
+To search once without the shortlist:
+
+```bash
+.venv/bin/python scrape.py --no-shortlist
+```
+
+On Windows, the same command is `.venv\Scripts\python scrape.py --no-shortlist`.
 
 ### Make a CV for one job
 
@@ -144,7 +205,11 @@ Try a broader job title, or turn remote jobs on. Indeed and LinkedIn only return
 
 **LinkedIn or Indeed blocked the search**
 
-Those sites sometimes refuse a lot of requests. The program skips that one search and keeps the others. Wait a while, then run it again. Leave the pause between requests in place.
+Those sites sometimes refuse a lot of requests. A proxy error, a timeout, or "too many requests" is tried again after a pause. A block is not retried, and the program does not try to get past one. It skips that one search and keeps the others. Wait a while, then run it again. Leave the pause between requests in place.
+
+**The shortlist left out a job I wanted**
+
+Open `config.yaml` and change the `shortlist:` lines described above. Raise `max_required_years`, or delete a word under `title_exclude`, if you are looking for a senior role. The words you search for are not removed: a search for "Senior Designer" keeps senior titles.
 
 **How do I run this every day?**
 
@@ -172,7 +237,7 @@ A configurable Python program that collects public job postings for any professi
 
 A fresh copy of this repository has no `config.yaml`, so the first run asks the setup questions. Ready-made searches for different professions and countries are in `examples/`. Copy one to `config.yaml` to try it. See [examples/README.md](examples/README.md).
 
-It reads public career pages and job boards. It does not log in, and it does not try to get past a block. Results land in a CSV file and an Excel file. The same title at the same company is kept once, and each row is marked new or already seen.
+It reads public career pages and job boards. It does not log in, and it does not try to get past a block. Results land in a CSV file and an Excel file, and a shortlist is written next to them. The same title at the same company is kept once, and each row is marked new or already seen.
 
 ```bash
 python scrape.py

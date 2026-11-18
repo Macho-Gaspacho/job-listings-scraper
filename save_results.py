@@ -324,6 +324,7 @@ def _write_excel(rows: list[dict], path: Path, place_names: list[str] | None = N
     about["A1"].font = Font(bold=True, size=16, color="1F4E79")
     lines = [
         "Each row on the Jobs sheet is one job posting collected by scrape.py.",
+        "Open output/shortlist.xlsx and the Top-N sheet for the short list to read first. This Jobs sheet is the full search.",
         "New since last run is yes when that link was not in data/seen_jobs.json before this run.",
         "On a first run, every row says yes. Later runs say yes only for postings that were not saved before.",
         "Use the dropdown arrows in the header row to filter. Choose yes to see only the new listings.",

@@ -8,6 +8,7 @@ search is skipped and the other sites are still saved.
 from __future__ import annotations
 
 import logging
+import time
 
 from jobspy import scrape_jobs
 from jobspy.util import log_handler
@@ -15,6 +16,54 @@ from jobspy.util import log_handler
 from config import Place, Settings
 from enrichment import jobspy_job_type
 from listings import row_from_hit
+from regions import country_from_places
+
+# A block or a login wall is not retried. A proxy miss, a timeout, or a
+# "too many requests" reply is a temporary failure, so the same search is
+# tried again after a pause. Nothing here switches proxies or tries to
+# look like a different browser.
+_STOP_WORDS = (
+    "blocked",
+    "captcha",
+    "forbidden",
+    "access denied",
+    "403",
+    "401",
+    "login required",
+)
+_TRANSIENT_WORDS = (
+    ("429", "too many requests"),
+    ("too many requests", "too many requests"),
+    ("proxy", "proxy error"),
+    ("timed out", "timeout"),
+    ("timeout", "timeout"),
+    ("502", "the site was busy"),
+    ("503", "the site was busy"),
+    ("504", "the site was busy"),
+    ("bad gateway", "the site was busy"),
+    ("service unavailable", "the site was busy"),
+    ("connection reset", "connection problem"),
+    ("connection aborted", "connection problem"),
+    ("remote end closed", "connection problem"),
+    ("temporarily", "connection problem"),
+)
+
+
+def transient_reason(exc: BaseException) -> str | None:
+    """A short reason to try again, or None when the search should be skipped."""
+    text = f"{type(exc).__name__} {exc}".casefold()
+    if any(word in text for word in _STOP_WORDS):
+        return None
+    for needle, reason in _TRANSIENT_WORDS:
+        if needle in text:
+            return reason
+    return None
+
+
+def retry_delay(pause_seconds: float, attempt_index: int) -> float:
+    """Seconds to wait before retry number attempt_index (0 is the first retry)."""
+    base = max(float(pause_seconds or 1), 1.0)
+    return min(60.0, base * (2 ** attempt_index))
 
 
 def quiet_library_logs(verbose: bool = False) -> None:
@@ -51,7 +100,7 @@ def build_search(settings: Settings, role: str, place: Place, site: str, verbose
         "location": location,
         "results_wanted": settings.results_per_search,
         "hours_old": settings.posted_within_days * 24,
-        "country_indeed": settings.country,
+        "country_indeed": place.country or country_from_places([place]) or settings.country,
         # None leaves the logger level alone, so a normal run stays quiet.
         # A detailed run asks the library for its own messages.
         "verbose": 2 if verbose else None,
@@ -91,12 +140,43 @@ def take_records(frame, site: str) -> list[dict]:
     return records
 
 
-def fetch_listings(settings: Settings, role: str, place: Place, site: str, verbose: bool = False) -> list[dict]:
-    """Run one search and return cleaned rows. Raises if the site fails."""
+def fetch_listings(
+    settings: Settings,
+    role: str,
+    place: Place,
+    site: str,
+    verbose: bool = False,
+    sleeper=None,
+    attempts: int = 3,
+) -> list[dict]:
+    """Run one search and return cleaned rows. Raises if the site fails.
+
+    A proxy error, a timeout, or HTTP 429 is tried again after a pause.
+    A block is not tried again. The pause grows each time and stays under a minute.
+    """
+    if sleeper is None:
+        sleeper = time.sleep
     quiet_library_logs(verbose)
-    frame = scrape_jobs(**build_search(settings, role, place, site, verbose=verbose))
+    tries = max(1, attempts)
+    frame = None
+    for attempt in range(tries):
+        try:
+            frame = scrape_jobs(**build_search(settings, role, place, site, verbose=verbose))
+            records = take_records(frame, site)
+            break
+        except Exception as exc:
+            reason = transient_reason(exc)
+            if reason is None or attempt == tries - 1:
+                raise
+            delay = retry_delay(settings.pause_seconds, attempt)
+            print(
+                f"  {site} did not answer ({reason}). "
+                f"Waiting {delay:.0f} seconds, then trying again.",
+                flush=True,
+            )
+            sleeper(delay)
     rows = []
-    for record in take_records(frame, site):
+    for record in records:
         row = row_from_hit(record, role, place.name, settings.snippet_characters)
         if row is not None:
             rows.append(row)

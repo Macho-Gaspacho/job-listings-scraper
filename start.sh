@@ -76,7 +76,7 @@ echo
 status=$?
 echo
 if [ "$status" -eq 0 ]; then
-  echo "Done. Open output/jobs.xlsx for jobs, or output/cv for a CV."
+  echo "Done. Open output/shortlist.xlsx and the Top-N sheet. The full search is output/jobs.xlsx."
 else
   echo "The search stopped. Read the messages above."
 fi

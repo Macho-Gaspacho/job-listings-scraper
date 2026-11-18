@@ -73,6 +73,23 @@ def test_load_config_reads_roles_places_and_paths(tmp_path):
     assert settings.csv_path == tmp_path / "output" / "jobs.csv"
     assert settings.excel_path == tmp_path / "output" / "jobs.xlsx"
     assert settings.seen_file == tmp_path / "data" / "seen_jobs.json"
+    assert settings.shortlist["enabled"] is True
+    assert settings.places[0].country is None
+
+
+def test_shortlist_can_be_turned_off_and_a_city_can_name_its_country(tmp_path):
+    path = _write(tmp_path)
+    text = path.read_text(encoding="utf-8")
+    text = text.replace("country: italy", "country: italy\nshortlist:\n  enabled: false\n", 1)
+    text = text.replace(
+        "    distance_miles: 30\n",
+        "    distance_miles: 30\n    country: italy\n",
+        1,
+    )
+    path.write_text(text, encoding="utf-8")
+    settings = load_config(path)
+    assert settings.shortlist["enabled"] is False
+    assert settings.places[0].country == "italy"
 
 
 def test_load_config_rejects_an_empty_role_list(tmp_path):

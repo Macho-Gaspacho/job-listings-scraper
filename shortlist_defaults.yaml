@@ -1,0 +1,103 @@
+# Default shortlist rules. A normal search uses these without any edit.
+# To change one of them, copy that line into config.yaml under shortlist:.
+# You do not need to copy the whole file.
+
+enabled: true
+top_n: 40
+# Drop a posting that asks for this many years or more.
+# Set it to nothing (max_required_years:) to keep those jobs.
+max_required_years: 3
+# Empty means keep every language. Use codes such as en, it, de, nl, fr, es, pl.
+allowed_languages: []
+language_min_probability: 0.70
+title_only_probability: 0.85
+# Whole words. "intern" does not remove "internal". "stage" only counts at the
+# start of a title, so it does not remove an English sentence that uses that word.
+title_exclude:
+  - senior
+  - sr
+  - lead
+  - head
+  - principal
+  - director
+  - staff
+  - vice president
+  - vp
+  - chief
+  - cpo
+  - cto
+  - cmo
+  - ceo
+  - group product manager
+  - group project manager
+  - manager of managers
+  - managing director
+  - leiter
+  - leiterin
+  - leitung
+  - leitend
+  - leitende
+  - leitender
+  - leider
+  - teamleider
+  - projectleider
+  - afdelingshoofd
+  - directeur
+  - directrice
+  - direktor
+  - direktorin
+  - direttore
+  - direttrice
+  - capo
+  - jefe
+  - cheffe
+  - hoofd
+  - starszy
+  - starsza
+  - intern
+  - internship
+  - werkstudent
+  - werkstudentin
+  - praktikant
+  - praktikantin
+  - praktikum
+  - stagiaire
+  - stagiair
+  - tirocinio
+  - tirocinante
+  - stagista
+  - becario
+  - becaria
+  - working student
+  - stazysta
+  - praktik
+  - stage
+# Leave empty to keep every title that survived the search.
+title_include: []
+exclude_companies: []
+exclude_countries: []
+# Phrases that mean the job itself is a coding job. Empty by default.
+description_exclude: []
+location_priorities: []
+other_location_points: 0
+# Extra points when these words appear. Empty by default, so a nurse search
+# is not scored as if it were a product role.
+keywords: []
+role_phrases: []
+snippet_characters: 280
+pause_seconds: 2
+weights:
+  role_match: 30
+  role_other: 8
+  junior_title: 20
+  junior_posting: 16
+  junior_years_1: 18
+  junior_years_2: 14
+  experience_years_1: 15
+  experience_years_2: 12
+  experience_stated: 0
+  experience_unspecified: 0
+  language: 10
+  language_secondary: 7
+  keyword_each: 3
+  keyword_cap: 10
